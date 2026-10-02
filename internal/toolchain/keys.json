@@ -1,0 +1,11 @@
+{
+  "_comment": "Pinned Ed25519 public keys that may sign the toolchain manifest. SHIPS EMPTY = FAIL CLOSED: with no keys, remote manifests are rejected and the IDE uses only the baked-in FALLBACK_MANIFEST (OTA off, but safe). To enable signed toolchain OTA: (1) generate a keypair offline, (2) paste the PUBLIC key PEM here with a stable id and status 'active', (3) keep the PRIVATE key offline and sign with `publish-toolchains --key <path>`. See docs/toolchain-distribution.md. NEVER put a private key in this repo.",
+  "keys": [
+    {
+      "id": "volt-toolchain-2026",
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAf8owp4jZ31kFBtlU5mMfn5OeOQv4wf0dCdIMJWEwfTY=\n-----END PUBLIC KEY-----\n",
+      "status": "active"
+    }
+  ],
+  "revoked": []
+}
