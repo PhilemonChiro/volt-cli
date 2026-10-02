@@ -3,6 +3,7 @@ package toolchain
 import (
 	"archive/tar"
 	"archive/zip"
+	"bufio"
 	"compress/gzip"
 	"crypto/sha256"
 	"crypto/tls"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/PhilemonChiro/volt-cli/internal/proc"
+	"github.com/ulikunitz/xz"
 )
 
 // markerFile records which asset (by SHA-256) an install dir holds, so a
@@ -117,7 +119,11 @@ func installAsset(e *Emitter, key string, a Asset, dir string) error {
 		return fmt.Errorf("extract %s: %w", a.Filename, err)
 	}
 	for _, rel := range a.Exposes {
-		if err := os.Chmod(filepath.Join(tmp, rel), 0o755); err != nil {
+		mode := os.FileMode(0o755)
+		if a.Kind == packKind { // data, not commands
+			mode = 0o644
+		}
+		if err := os.Chmod(filepath.Join(tmp, rel), mode); err != nil {
 			return fmt.Errorf("%s: archive lacks %s", a.Filename, rel)
 		}
 	}
@@ -199,7 +205,7 @@ func humanSize(n int64) string {
 	return fmt.Sprintf("%dB", n)
 }
 
-// extract unpacks archive (tar.gz or zip) into dest, dropping the first strip
+// extract unpacks archive (tar.gz, tar.xz or zip) into dest, dropping the first strip
 // path components of every entry. Entries that would land outside dest, and
 // links that point outside linkRoot, are rejected.
 func extract(archive, format string, strip int, dest, linkRoot string) error {
@@ -215,6 +221,17 @@ func extract(archive, format string, strip int, dest, linkRoot string) error {
 			return err
 		}
 		return extractTar(tar.NewReader(gz), strip, dest, linkRoot)
+	case "tar.xz":
+		f, err := os.Open(archive)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		xr, err := xz.NewReader(bufio.NewReaderSize(f, 1<<20))
+		if err != nil {
+			return err
+		}
+		return extractTar(tar.NewReader(xr), strip, dest, linkRoot)
 	case "zip":
 		return extractZip(archive, strip, dest, linkRoot)
 	}
@@ -373,4 +390,10 @@ func writeFile(p string, r io.Reader, perm os.FileMode) error {
 		return err
 	}
 	return f.Close()
+}
+
+// ExtractTarGz unpacks a .tar.gz into dest with extract's safety checks:
+// entries must land in dest and links must point inside it.
+func ExtractTarGz(archive, dest string) error {
+	return extract(archive, "tar.gz", 0, dest, dest)
 }

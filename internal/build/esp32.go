@@ -3,14 +3,20 @@ package build
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/PhilemonChiro/volt-cli/internal/esptool"
+	"github.com/PhilemonChiro/volt-cli/internal/proc"
+	"github.com/PhilemonChiro/volt-cli/internal/sdk"
 )
 
 // Project is one program to build for one chip.
@@ -24,206 +30,139 @@ type Project struct {
 	Env       []string
 }
 
-// staleCache matches output from a build dir CMake can no longer use: moved
-// or copied projects, a replaced toolchain, a half-written cache.
-var staleCache = regexp.MustCompile(`(?i)CMake Error.*configure_file|CMakeFiles/CMakeTmp|` +
-	`Error in dependency provider|does not match the source .* used to generate cache|` +
-	`is different than the directory .* where CMakeCache\.txt was created|` +
-	`loading 'build\.ninja'|is not a full path to an existing compiler|` +
-	`Run 'idf\.py fullclean' to start again`)
-
-// ESP32 generates <project>/build/<chip>/ as an ESP-IDF project over the
-// read-only framework and builds it, returning the app image path. A build
-// that fails on a stale CMake cache is retried once from a clean cache.
+// ESP32 builds the project with the installed ESP-IDF pack (see package
+// sdk): it writes <project>/build/<chip>/main/main.c, compiles it with the
+// runtime and the drivers the program uses, links against the pack and makes
+// the app image, returning its path. Builds are incremental.
 func ESP32(p Project, r *Reporter) (string, error) {
 	fw := filepath.Join(p.Framework, "esp32")
 	if _, err := os.Stat(filepath.Join(fw, "volt.cmake")); err != nil {
 		return "", fmt.Errorf("ESP32 framework not found at %s", fw)
 	}
-	dir := filepath.Join(p.Dir, "build", p.Chip)
-	if err := generateESP32(dir, fw, p); err != nil {
+	pack, err := sdk.Find(p.Chip)
+	if err != nil {
 		return "", err
 	}
-	if err := ensureESP32BuildCache(dir, p); err != nil {
-		r.Message("warn", "Firmware build cache unavailable: "+err.Error())
+	spec, err := sdk.LoadSpec(pack)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", filepath.Base(pack), err)
 	}
-
+	tools, err := esp32Tools(p.Env, spec)
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(p.Dir, "build", p.Chip)
+	out := filepath.Join(dir, "build")
+	if err := dropIDFBuild(out); err != nil {
+		return "", err
+	}
+	if err := writeIfChanged(filepath.Join(dir, "main", "main.c"), p.Code); err != nil {
+		return "", err
+	}
+	srcs, err := VoltSources(dir, p.Framework, p.Devices, p.Code)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		return "", err
+	}
 	logf, err := os.Create(filepath.Join(dir, "build.log"))
 	if err != nil {
 		return "", err
 	}
 	defer logf.Close()
-
-	py, idfPy, err := idfCommand(p.Env)
-	if err != nil {
+	tools.Log = logf
+	if err := checkCompiler(pack, tools.Bin, spec, r); err != nil {
 		return "", err
 	}
-	t := &tool{r: r, stage: "build", band: buildBand, log: logf}
+
 	r.Step("build", "Building firmware...", buildBand.start)
-	out, err := t.run(dir, p.Env, py, idfPy, "build")
-	cache := filepath.Join(dir, "build")
+	res, err := sdk.Build(proc.Root, pack, spec, sdk.App{
+		Name: p.Name, Project: dir, Sources: srcs,
+		Framework: filepath.Join(p.Framework, "include"), Out: out,
+	}, tools)
 	if errors.Is(err, context.Canceled) {
 		return "", err
 	}
-	if err != nil && staleCache.MatchString(out) {
-		r.Step("build", "Build cache looks stale — clearing it and retrying once...", buildBand.start)
-		if rmErr := removeBuildCache(cache); rmErr != nil {
-			return "", fmt.Errorf("clearing %s: %w", cache, rmErr)
-		}
-		if cacheErr := ensureESP32BuildCache(dir, p); cacheErr != nil {
-			r.Message("warn", "Firmware build cache unavailable: "+cacheErr.Error())
-		}
-		out, err = t.run(dir, p.Env, py, idfPy, "build")
-	}
 	if err != nil {
-		if t.errors == 0 { // nothing recognisable shown: don't hide why
-			for _, l := range tail(out, 25) {
+		lines := strings.Split(err.Error(), "\n")
+		if len(lines) > 26 {
+			lines = append(lines[:1], lines[len(lines)-25:]...)
+		}
+		for _, l := range lines {
+			if l = strings.TrimSpace(ansiRe.ReplaceAllString(l, "")); l != "" {
 				r.Message("error", l)
 			}
 		}
 		return "", fmt.Errorf("build failed (full log: %s)", logf.Name())
 	}
-	r.Step("build", "Build complete", buildBand.end)
-
-	app := Artifact(p.Dir, p.Chip, p.Name)
-	if app == "" {
-		return "", fmt.Errorf("build succeeded but %s.bin is missing", p.Name)
+	for _, l := range res.Warnings {
+		if l = ansiRe.ReplaceAllString(l, ""); strings.Contains(l, "warning:") && strings.Contains(l, ".c:") {
+			r.Message("warn", strings.TrimSpace(l))
+		}
 	}
-	return app, nil
+	if res.Linked {
+		r.Step("build", fmt.Sprintf("Build complete (%d of %d files compiled)", res.Compiled, res.Units), buildBand.end)
+	} else {
+		r.Step("build", "Firmware up to date", buildBand.end)
+	}
+	return res.Bin, nil
 }
 
-// ensureESP32BuildCache keeps ESP-IDF's expensive CMake/Ninja build directory
-// outside the project tree. Removing <project>/build then drops only generated
-// wrapper files; the compiled framework/object cache survives in ~/.volt/cache.
-func ensureESP32BuildCache(dir string, p Project) error {
-	if os.Getenv("VOLT_DISABLE_GLOBAL_BUILD_CACHE") != "" {
-		return nil
+// ansiRe matches the colour codes in compiler output (the pack's flags keep
+// ESP-IDF's -fdiagnostics-color=always; build.log keeps them).
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
+
+// esp32Tools finds the pack's compiler in the toolchain.
+func esp32Tools(env []string, spec *sdk.Spec) (sdk.Tools, error) {
+	var path string
+	for _, kv := range env {
+		if k, v, _ := strings.Cut(kv, "="); k == "PATH" {
+			path = v
+		}
 	}
-	link := filepath.Join(dir, "build")
-	target, err := esp32BuildCacheTarget(p)
+	gcc := spec.ToolPrefix + "gcc"
+	for _, d := range filepath.SplitList(path + string(filepath.ListSeparator) + os.Getenv("PATH")) {
+		if fi, err := os.Stat(filepath.Join(d, gcc)); err == nil && !fi.IsDir() {
+			return sdk.Tools{Bin: d}, nil
+		}
+	}
+	return sdk.Tools{}, fmt.Errorf("%s not found in the toolchain", gcc)
+}
+
+// checkCompiler warns when the compiler is not the one the pack was built
+// with: objects would still link, but the build is no longer the verified one.
+func checkCompiler(pack, bin string, spec *sdk.Spec, r *Reporter) error {
+	var prov sdk.Provenance
+	b, err := os.ReadFile(filepath.Join(pack, "provenance.json"))
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return err
+	if err := json.Unmarshal(b, &prov); err != nil {
+		return fmt.Errorf("%s: provenance.json: %w", filepath.Base(pack), err)
 	}
-
-	if st, err := os.Lstat(link); err == nil {
-		if st.Mode()&os.ModeSymlink != 0 {
-			dst, err := os.Readlink(link)
-			if err == nil {
-				if !filepath.IsAbs(dst) {
-					dst = filepath.Join(filepath.Dir(link), dst)
-				}
-				if filepath.Clean(dst) == filepath.Clean(target) {
-					return os.MkdirAll(target, 0o755)
-				}
-			}
-			if err := os.Remove(link); err != nil {
-				return err
-			}
-		} else if st.IsDir() {
-			if _, err := os.Stat(target); os.IsNotExist(err) {
-				if err := os.Rename(link, target); err != nil {
-					return err
-				}
-			} else {
-				return nil
-			}
-		} else {
-			return nil
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-
-	if err := os.MkdirAll(target, 0o755); err != nil {
-		return err
-	}
-	return os.Symlink(target, link)
-}
-
-func esp32BuildCacheTarget(p Project) (string, error) {
-	home, err := os.UserHomeDir()
+	v, err := exec.Command(filepath.Join(bin, spec.ToolPrefix+"gcc"), "--version").Output()
 	if err != nil {
-		return "", err
+		return fmt.Errorf("%sgcc: %w", spec.ToolPrefix, err)
 	}
-	dir, _ := filepath.Abs(p.Dir)
-	framework, _ := filepath.Abs(p.Framework)
-	devices, _ := filepath.Abs(p.Devices)
-	sum := sha256.Sum256([]byte(strings.Join([]string{dir, p.Name, p.Chip, framework, devices}, "\x00")))
-	return filepath.Join(home, ".volt", "cache", "firmware-builds", p.Chip+"-"+hex.EncodeToString(sum[:])[:16]), nil
-}
-
-func removeBuildCache(path string) error {
-	target := path
-	if dst, err := os.Readlink(path); err == nil {
-		if filepath.IsAbs(dst) {
-			target = dst
-		} else {
-			target = filepath.Join(filepath.Dir(path), dst)
-		}
-	}
-	if err := os.RemoveAll(target); err != nil {
-		return err
-	}
-	if target != path {
-		return os.Remove(path)
+	if got, _, _ := strings.Cut(string(v), "\n"); got != prov.Compiler {
+		r.Message("warn", fmt.Sprintf("compiler %q differs from the pack's %q", got, prov.Compiler))
 	}
 	return nil
 }
 
-// idfCommand returns the IDF Python and idf.py from the build environment.
-func idfCommand(env []string) (python, idfPy string, err error) {
-	var idf, pyEnv string
-	for _, kv := range env {
-		k, v, _ := strings.Cut(kv, "=")
-		switch k {
-		case "IDF_PATH":
-			idf = v
-		case "IDF_PYTHON_ENV_PATH":
-			pyEnv = v
-		}
-	}
-	if idf == "" || pyEnv == "" {
-		return "", "", errors.New("ESP-IDF environment incomplete (no IDF_PATH or IDF_PYTHON_ENV_PATH)")
-	}
-	return filepath.Join(pyEnv, "bin", "python"), filepath.Join(idf, "tools", "idf.py"), nil
-}
-
-// generateESP32 writes the IDF project. Files are only rewritten when their
-// content changes, so ninja rebuilds just what the new program needs.
-func generateESP32(dir, fw string, p Project) error {
-	drivers, err := usedDrivers(p.Devices, p.Code)
+// dropIDFBuild removes what an ESP-IDF build left at out before packs: a
+// link into ~/.volt/cache/firmware-builds, or a CMake build dir.
+func dropIDFBuild(out string) error {
+	fi, err := os.Lstat(out)
 	if err != nil {
-		return err
+		return nil
 	}
-	var srcs strings.Builder
-	for _, d := range drivers {
-		fmt.Fprintf(&srcs, "\n    %s", cmakeQuote(d))
+	if fi.Mode()&os.ModeSymlink != 0 {
+		return os.Remove(out)
 	}
-
-	top := fmt.Sprintf(`# Generated by volt build — do not edit.
-cmake_minimum_required(VERSION 3.16)
-include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(%s)
-`, p.Name)
-	main := fmt.Sprintf(`# Generated by volt build — do not edit.
-include(%s)
-idf_component_register(
-    SRCS "main.c" ${VOLT_CORE_SRCS}%s
-    INCLUDE_DIRS ${VOLT_INCLUDE_DIRS}
-)
-`, cmakeQuote(filepath.Join(fw, "volt.cmake")), srcs.String())
-
-	for _, f := range []struct{ path, text string }{
-		{filepath.Join(dir, "CMakeLists.txt"), top},
-		{filepath.Join(dir, "main", "CMakeLists.txt"), main},
-		{filepath.Join(dir, "main", "main.c"), p.Code},
-	} {
-		if err := writeIfChanged(f.path, f.text); err != nil {
-			return err
-		}
+	if _, err := os.Stat(filepath.Join(out, "CMakeCache.txt")); err == nil {
+		return os.RemoveAll(out)
 	}
 	return nil
 }
@@ -246,9 +185,23 @@ func usedDrivers(devices, code string) ([]string, error) {
 	return used, nil
 }
 
-func cmakeQuote(p string) string {
-	p = filepath.ToSlash(p)
-	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`, `$`, `\$`).Replace(p) + `"`
+var coreSrcRe = regexp.MustCompile(`"\$\{_VOLT_FW\}/([^"]+\.c)"`)
+
+// VoltSources lists the C files ESP-IDF compiles into the app component for
+// a program, in its order: main.c (under project), the runtime from
+// volt.cmake, then the drivers the program uses.
+func VoltSources(project, framework, devices, code string) ([]string, error) {
+	fw := filepath.Join(framework, "esp32")
+	b, err := os.ReadFile(filepath.Join(fw, "volt.cmake"))
+	if err != nil {
+		return nil, err
+	}
+	srcs := []string{filepath.Join(project, "main", "main.c")}
+	for _, m := range coreSrcRe.FindAllSubmatch(b, -1) {
+		srcs = append(srcs, filepath.Join(fw, string(m[1])))
+	}
+	drivers, err := usedDrivers(devices, code)
+	return append(srcs, drivers...), err
 }
 
 func writeIfChanged(path, text string) error {
@@ -271,40 +224,77 @@ func FirmwareName(s string) string {
 	return s
 }
 
-// noDownloadMode matches esptool failing to get the chip into download mode.
-var noDownloadMode = regexp.MustCompile(`No serial data received|Failed to connect to`)
-
-// FlashESP32 writes the built project (bootloader, partition table, app) to
-// the board on port.
+// FlashESP32 writes the built project to the board on port: the pack's
+// bootloader and partition table, then the app image.
 func FlashESP32(dir, chip, port string, env []string, r *Reporter) error {
 	bdir := filepath.Join(dir, "build", chip)
+	pack, err := sdk.Find(chip)
+	if err != nil {
+		return err
+	}
+	spec, err := sdk.LoadSpec(pack)
+	if err != nil {
+		return fmt.Errorf("%s: %w", filepath.Base(pack), err)
+	}
+	c, err := esptool.ChipByName(spec.Chip)
+	if err != nil {
+		return err
+	}
+	bins, _ := filepath.Glob(filepath.Join(bdir, "build", "*.bin"))
+	if len(bins) != 1 {
+		return fmt.Errorf("expected one app image in %s, found %d; run volt build", filepath.Join(bdir, "build"), len(bins))
+	}
+	o := esptool.FlashOptions{
+		Chip: c, Port: port, Baud: 460800,
+		FlashMode: spec.FlashSettings["flash_mode"], FlashFreq: spec.FlashSettings["flash_freq"],
+		FlashSize: spec.FlashSettings["flash_size"],
+	}
+	for _, part := range spec.Flash {
+		file := strings.ReplaceAll(part.File, "{pack}", pack)
+		if part.File == "" {
+			file = bins[0]
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return err
+		}
+		off, err := strconv.ParseUint(part.Offset, 0, 32)
+		if err != nil {
+			return fmt.Errorf("%s offset %q: %w", part.Name, part.Offset, err)
+		}
+		o.Parts = append(o.Parts, esptool.FlashPart{Offset: uint32(off), Data: data, Name: filepath.Base(file)})
+	}
+
 	logf, err := os.Create(filepath.Join(bdir, "flash.log"))
 	if err != nil {
 		return err
 	}
 	defer logf.Close()
-	py, idfPy, err := idfCommand(env)
-	if err != nil {
-		return err
+	o.Log = logf
+	b := flashBand
+	o.Progress = func(msg string, done, total int) {
+		if done == 0 || done == total {
+			r.Step("flash", msg, b.start+done*(b.end-1-b.start)/max(total, 1))
+			return
+		}
+		pct := 100 * done / total
+		r.Progress("flash", fmt.Sprintf("Flashing... %d%%", pct), b.start+done*(b.end-1-b.start)/total)
 	}
-	t := &tool{r: r, stage: "flash", band: flashBand, log: logf}
-	r.Step("flash", "Flashing to "+port+"...", flashBand.start)
-	out, err := t.run(bdir, env, py, idfPy, "-p", port, "flash")
+	r.Step("flash", "Flashing to "+port+"...", b.start)
+	start := time.Now()
+	err = esptool.WriteFlash(proc.Root, o)
 	if errors.Is(err, context.Canceled) {
 		return err
 	}
 	if err != nil {
-		if noDownloadMode.MatchString(out) {
+		fmt.Fprintln(logf, "error:", err)
+		if errors.Is(err, esptool.ErrConnect) {
 			r.Message("error", "The board's auto-reset didn't enter download mode. Hold BOOT, run the flash "+
 				"again, and release BOOT when \"Connecting...\" appears. (Boards without RTS/DTR wired always need this.)")
-		} else if t.errors == 0 {
-			for _, l := range tail(out, 25) {
-				r.Message("error", l)
-			}
 		}
-		return fmt.Errorf("flash failed (full log: %s)", logf.Name())
+		return fmt.Errorf("flash failed: %w", err)
 	}
-	r.Step("flash", "Flash complete", flashBand.end)
+	r.Step("flash", fmt.Sprintf("Flash complete (%.1fs)", time.Since(start).Seconds()), b.end)
 	return nil
 }
 

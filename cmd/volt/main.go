@@ -35,6 +35,7 @@ func init() {
 		{"run", "[dir] [-p port] [--json]", "Build, flash, then monitor the board", runRun},
 		{"monitor", "[-p port] [-b baud]", "Show a board's serial output", runMonitor},
 		{"ports", "[--json] [--probe]", "List connected boards", runPorts},
+		{"sdk", "build <chip> [-o dir]", "Build and verify a prebuilt ESP-IDF pack (maintainers)", runSdk},
 		{"cache", "package [chip] -o file.tar.gz", "Package a warmed firmware compiler cache for publishing", runCache},
 		{"toolchain", "status|install|repair [chip]", "Check, install or repair a chip's build toolchain", runToolchain},
 		{"worker", "", "Serve the IDE worker protocol on stdin/stdout", runWorker},

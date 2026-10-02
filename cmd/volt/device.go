@@ -27,18 +27,11 @@ func runPorts(args []string) int {
 		return 1
 	}
 	if *probe {
-		var env []string
 		for i, p := range ports {
 			if p.State != "running" || !strings.HasPrefix(p.Chip, "ESP") {
 				continue
 			}
-			if env == nil {
-				if env, err = espEnv(); err != nil {
-					stderr.Printf("[red]volt ports: can't probe: %s[/red]\n", err)
-					return 1
-				}
-			}
-			ports[i].Probe = device.ProbeESP(p.Port, env)
+			ports[i].Probe = device.ProbeESP(p.Port)
 		}
 	}
 
@@ -69,18 +62,6 @@ func runPorts(args []string) int {
 		stdout.Printf("\n")
 	}
 	return 0
-}
-
-// espEnv is the ESP-IDF environment, for esptool.
-func espEnv() ([]string, error) {
-	tc, err := toolchain.For("esp32", false)
-	if err != nil {
-		return nil, err
-	}
-	if _, ready := tc.Status(); !ready {
-		return nil, fmt.Errorf("ESP32 toolchain not ready. Run: volt toolchain install esp32")
-	}
-	return tc.BuildEnv()
 }
 
 // selectPort picks the board to use: the -p port, else the only connected

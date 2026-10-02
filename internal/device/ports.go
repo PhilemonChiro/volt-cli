@@ -4,13 +4,14 @@ package device
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	"go.bug.st/serial/enumerator"
+
+	"github.com/PhilemonChiro/volt-cli/internal/esptool"
 )
 
 // Port is one connected board. The JSON shape matches the IDE's
@@ -134,30 +135,13 @@ func Wait(board Port, timeout time.Duration) string {
 	return ""
 }
 
-var esptoolAnswerRe = regexp.MustCompile(`Chip is|Detected|Crystal is`)
-
 // ProbeESP asks the chip behind port for its ID without resetting it, to
 // tell a live ESP from a bare USB-serial bridge: "verified" when it answers
 // within 2 s, else "silent" (dead, unwired, or running firmware).
-func ProbeESP(port string, env []string) string {
-	var idf, pyEnv string
-	for _, kv := range env {
-		k, v, _ := strings.Cut(kv, "=")
-		switch k {
-		case "IDF_PATH":
-			idf = v
-		case "IDF_PYTHON_ENV_PATH":
-			pyEnv = v
-		}
-	}
+func ProbeESP(port string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, filepath.Join(pyEnv, "bin", "python"),
-		filepath.Join(idf, "components", "esptool_py", "esptool", "esptool.py"),
-		"-p", port, "--before", "no_reset", "chip_id")
-	cmd.Env = append(os.Environ(), env...)
-	out, _ := cmd.CombinedOutput()
-	if esptoolAnswerRe.Match(out) {
+	if esptool.Probe(ctx, port) {
 		return "verified"
 	}
 	return "silent"

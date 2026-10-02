@@ -98,9 +98,18 @@ func (m *Manifest) Requirements(chip, platform string) []string {
 
 // LoadManifest returns the manifest and where it came from: a fresh verified
 // cache, the network (only when online), a stale verified cache, or the
-// embedded fallback. Anything not embedded must carry a valid signature and be
-// at or above the rollback floor.
+// embedded fallback, whichever is newest. Anything not embedded must carry a
+// valid signature and be at or above the rollback floor.
 func LoadManifest(online bool) (*Manifest, string) {
+	m, src := loadManifest(online)
+	// A CLI newer than the published manifest carries the newer one.
+	if fallback.ManifestVersion > m.ManifestVersion {
+		return fallback, "built-in"
+	}
+	return m, src
+}
+
+func loadManifest(online bool) (*Manifest, string) {
 	cache := filepath.Join(voltHome(), "cache", "manifest.json")
 	if st, err := os.Stat(cache); err == nil && time.Since(st.ModTime()) < cacheTTL {
 		if m := readTrusted(cache); m != nil {

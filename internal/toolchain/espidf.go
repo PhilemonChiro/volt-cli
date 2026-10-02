@@ -22,9 +22,30 @@ var espIDF = pinnedRepo{
 	ref: "v5.4",
 }
 
-// ESP-IDF chips handled by this factory; the IDF target equals the chip name.
-// Add esp32s3, esp32c3, … here once the framework and compiler support them.
-func init() { register(newESPIDF, "esp32") }
+// ForIDF is the full ESP-IDF toolchain `volt sdk build` makes SDK packs
+// with: an ESP-IDF tree and its tools (install.sh), with CMake, Ninja and
+// Python from Volt's earlier managed installs or PATH. Users never need it.
+// The IDF target equals the chip name.
+func ForIDF(chip string) (*Toolchain, error) {
+	h := &Host{Platform: Platform()}
+	if h.Platform == "" {
+		return nil, fmt.Errorf("toolchains are not provided for this OS/architecture yet")
+	}
+	h.Manifest, h.ManifestSource = LoadManifest(false)
+	return newESPIDF(chip, h)
+}
+
+// legacyBinDirs are the CMake, Ninja and Python dirs earlier manifests
+// installed, when present.
+func legacyBinDirs() []string {
+	var dirs []string
+	for _, d := range []string{"cmake/CMake.app/Contents/bin", "ninja", "python/bin"} {
+		if p := filepath.Join(Root(), d); exists(p) {
+			dirs = append(dirs, p)
+		}
+	}
+	return dirs
+}
 
 // idfCompilerPrefix is the ~/.espressif/tools folder prefix of a target's GCC.
 func idfCompilerPrefix(target string) string {
@@ -64,21 +85,12 @@ func FindIDF() IDF {
 
 func newESPIDF(chip string, h *Host) (*Toolchain, error) {
 	idf := FindIDF()
-	assets := h.Manifest.Requirements(chip, h.Platform)
-	t := &Toolchain{Chip: chip, Name: strings.ToUpper(chip)}
-
-	for _, key := range assets {
-		c := assetComponent(h, key)
-		t.Components = append(t.Components, c)
-		if a, ok := h.Manifest.Asset(key); ok {
-			t.Managed = append(t.Managed, assetInstallDir(a))
-		}
-	}
+	t := &Toolchain{Chip: chip, Name: "ESP-IDF (" + chip + ")"}
 	if h.Platform == "linux-x64" {
 		t.Components = append(t.Components, linuxPackages())
 	}
-	t.Components = append(t.Components, idfSource(idf), idfTools(idf, chip, assets, h))
-	t.BuildEnv = func() ([]string, error) { return idfEnv(idf, chip, BinDirs(h, assets)) }
+	t.Components = append(t.Components, idfSource(idf), idfTools(idf, chip))
+	t.BuildEnv = func() ([]string, error) { return idfEnv(idf, chip, legacyBinDirs()) }
 
 	if idf.Managed {
 		t.Managed = append(t.Managed, idf.Path, idf.ToolsPath)
@@ -195,7 +207,7 @@ func readAssetMarker(dir string) *marker {
 	return &m
 }
 
-func idfTools(idf IDF, target string, assets []string, h *Host) Component {
+func idfTools(idf IDF, target string) Component {
 	prefix := idfCompilerPrefix(target)
 	c := Component{ID: "esp-idf-tools", Name: "ESP-IDF tools (" + target + ")"}
 	c.Check = func() Status {
@@ -220,7 +232,7 @@ func idfTools(idf IDF, target string, assets []string, h *Host) Component {
 		if err := needSpace(2 << 30); err != nil {
 			return err
 		}
-		path := strings.Join(append(BinDirs(h, assets), os.Getenv("PATH")), string(os.PathListSeparator))
+		path := strings.Join(append(legacyBinDirs(), os.Getenv("PATH")), string(os.PathListSeparator))
 		env := []string{"PATH=" + path}
 		if idf.Managed {
 			env = append(env, "IDF_TOOLS_PATH="+idf.ToolsPath)

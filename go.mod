@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/PhilemonChiro/volt-compiler v0.0.0-00010101000000-000000000000
+	github.com/ulikunitz/xz v0.5.17
 	go.bug.st/serial v1.8.0
 )
 
