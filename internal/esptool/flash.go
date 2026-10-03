@@ -46,7 +46,12 @@ type FlashOptions struct {
 	Parts                           []FlashPart
 	// Progress reports done/total bytes written, over all parts.
 	Progress func(msg string, done, total int)
-	Log      io.Writer // optional protocol log
+	// Full writes every part even when flash already holds it.
+	Full bool
+	// Skipped, if set, is told about each part left alone because flash
+	// already held it.
+	Skipped func(FlashPart)
+	Log     io.Writer // optional protocol log
 }
 
 const (
@@ -58,6 +63,7 @@ const (
 	memEndROMTimeout = 200 * time.Millisecond
 	connectAttempts  = 7
 	writeAttempts    = 3
+	sessionAttempts  = 3
 
 	opMemBegin      = 0x05
 	opMemEnd        = 0x06
@@ -88,6 +94,15 @@ func WriteFlash(ctx context.Context, o FlashOptions) error {
 	if o.Chip == nil || o.Chip.Name != "esp32" {
 		return fmt.Errorf("esptool: flashing is only implemented for esp32")
 	}
+	size, ok := flashSizeBytes[o.FlashSize]
+	if !ok {
+		return fmt.Errorf("unknown flash size %q", o.FlashSize)
+	}
+	for _, p := range o.Parts {
+		if int(p.Offset)+len(p.Data) > size {
+			return fmt.Errorf("%s (%d bytes at %#x) does not fit in %s of flash", p.Name, len(p.Data), p.Offset, o.FlashSize)
+		}
+	}
 	port, err := serial.Open(o.Port, &serial.Mode{BaudRate: romBaud})
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", o.Port, err)
@@ -95,44 +110,88 @@ func WriteFlash(ctx context.Context, o FlashOptions) error {
 	defer port.Close()
 	l := &loader{ctx: ctx, port: port, log: o.Log, baud: romBaud}
 
-	o.progress("Connecting to device...", 0, 1)
-	if err := l.connect(); err != nil {
-		return err
-	}
-	if err := l.checkChip(o.Parts); err != nil {
-		return err
-	}
-	o.progress("Uploading flash stub...", 0, 1)
-	if err := l.runStub(o.Chip.Name); err != nil {
-		return err
-	}
-	if o.Baud > romBaud {
-		if err := l.changeBaud(o.Baud); err != nil {
+	// A write that fails after retries restarts the session from a reset at
+	// the next lower baud rate. Parts already written are skipped by their
+	// MD5, so a retry only redoes what is missing.
+	bauds := fallbackBauds(o.Baud)
+	for i, baud := range bauds {
+		err = l.session(o, baud, size)
+		if err == nil {
+			o.progress("Resetting device...", 1, 1)
+			return l.hardReset()
+		}
+		var f fatalError
+		if errors.As(err, &f) || errors.Is(err, ErrConnect) || ctx.Err() != nil || i == len(bauds)-1 {
+			return err
+		}
+		l.logf("flashing failed at %d baud (%v); retrying at %d baud", baud, err, bauds[i+1])
+		o.progress(fmt.Sprintf("Write failed, retrying at %d baud...", bauds[i+1]), 0, 1)
+		if err := l.toROMBaud(); err != nil {
 			return err
 		}
 	}
-	size, ok := flashSizeBytes[o.FlashSize]
-	if !ok {
-		return fmt.Errorf("unknown flash size %q", o.FlashSize)
+	return err
+}
+
+// fatalError marks a refusal that no retry can fix.
+type fatalError struct{ error }
+
+func (f fatalError) Unwrap() error { return f.error }
+
+// fallbackBauds is baud, then the standard rates below it down to the ROM's.
+func fallbackBauds(baud int) []int {
+	out := []int{max(baud, romBaud)}
+	for _, b := range []int{460800, 230400, romBaud} {
+		if b < out[len(out)-1] {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// toROMBaud returns the host side to the ROM loader's rate for a new reset.
+func (l *loader) toROMBaud() error {
+	l.stub = false
+	if l.baud == romBaud {
+		return nil
+	}
+	l.baud = romBaud
+	return l.port.SetMode(&serial.Mode{BaudRate: romBaud})
+}
+
+// session connects at baud and writes every part not already in flash.
+func (l *loader) session(o FlashOptions, baud, size int) error {
+	if err := l.start(o, baud); err != nil {
+		return err
 	}
 	o.progress("Configuring flash...", 0, 1)
 	if err := l.setFlashParams(size); err != nil {
 		return err
 	}
-
+	imgs := make([][]byte, len(o.Parts))
 	total := 0
-	for _, p := range o.Parts {
-		if int(p.Offset)+len(p.Data) > size {
-			return fmt.Errorf("%s (%d bytes at %#x) does not fit in %s of flash", p.Name, len(p.Data), p.Offset, o.FlashSize)
-		}
-		total += len(padTo(slicesClone(p.Data), 4, 0xFF))
-	}
-	done := 0
-	for _, p := range o.Parts {
+	for i, p := range o.Parts {
 		img := padTo(slicesClone(p.Data), 4, 0xFF)
 		if p.Offset == bootloaderAddr && !l.secure {
+			var err error
 			if img, err = updateImageFlashParams(o, img); err != nil {
-				return err
+				return fatalError{err}
+			}
+		}
+		imgs[i] = img
+		total += len(img)
+	}
+	done := 0
+	for i, p := range o.Parts {
+		img := imgs[i]
+		if !o.Full {
+			want := md5.Sum(img)
+			if got, err := l.flashMD5(p.Offset, len(img)); err == nil && bytes.Equal(got, want[:]) {
+				l.logf("%s at %#08x unchanged, skipped", p.Name, p.Offset)
+				o.skipped(p)
+				done += len(img)
+				o.progress(fmt.Sprintf("%s unchanged, skipped", p.Name), done, total)
+				continue
 			}
 		}
 		n, err := l.writeCompressed(p, img, func(written int) {
@@ -143,8 +202,54 @@ func WriteFlash(ctx context.Context, o FlashOptions) error {
 		}
 		done += n
 	}
-	o.progress("Resetting device...", total, total)
-	return l.hardReset()
+	return nil
+}
+
+// flashMD5 is the MD5 of size bytes of flash at offset, computed on chip.
+func (l *loader) flashMD5(offset uint32, size int) ([]byte, error) {
+	_, got, err := l.check("calculate md5sum", opSPIFlashMD5, pack(offset, uint32(size), 0, 0), 0, 16,
+		timeoutPerMB(8, size))
+	return got, err
+}
+
+// start connects, checks the chip, runs the stub and raises the baud rate.
+// A transient failure after connecting (a dropped stub upload, a missed baud
+// change) restarts the whole sequence from a fresh reset, up to
+// sessionAttempts times; connect itself already cycles reset strategies.
+func (l *loader) start(o FlashOptions, baud int) error {
+	var err error
+	for attempt := 1; attempt <= sessionAttempts; attempt++ {
+		if attempt > 1 {
+			l.logf("retrying from reset (%d/%d): %v", attempt, sessionAttempts, err)
+			if err := l.toROMBaud(); err != nil {
+				return err
+			}
+		}
+		o.progress("Connecting to device...", 0, 1)
+		if err = l.connect(); err != nil {
+			return err // already retried across reset strategies
+		}
+		if err = l.checkChip(o.Parts); err != nil {
+			return fatalError{err} // a refusal, not a glitch
+		}
+		o.progress("Uploading flash stub...", 0, 1)
+		if err = l.runStub(o.Chip.Name); err != nil {
+			continue
+		}
+		if baud > romBaud {
+			if err = l.changeBaud(baud); err != nil {
+				continue
+			}
+		}
+		return nil
+	}
+	return err
+}
+
+func (o FlashOptions) skipped(p FlashPart) {
+	if o.Skipped != nil {
+		o.Skipped(p)
+	}
 }
 
 func (o FlashOptions) progress(msg string, done, total int) {
@@ -402,17 +507,39 @@ func (l *loader) sync() error {
 
 var bootRe = regexp.MustCompile(`(?s)boot:(0x[0-9a-fA-F]+)(.*waiting for download)?`)
 
+// resetStrategy is one way of pulsing EN/IO0 into download mode.
+type resetStrategy struct {
+	name  string
+	tight bool
+	delay time.Duration
+}
+
+// resetStrategies mirrors esptool's default_reset order on POSIX: tight
+// (atomic DTR+RTS) resets first, then classic ones, each with the normal
+// and the longer delay. connect cycles through them.
+func (l *loader) resetStrategies() []resetStrategy {
+	var s []resetStrategy
+	if ok, _ := setDTRRTS(l.port, false, false); ok {
+		s = append(s, resetStrategy{"tight", true, 50 * time.Millisecond},
+			resetStrategy{"tight", true, 550 * time.Millisecond})
+	}
+	return append(s, resetStrategy{"classic", false, 50 * time.Millisecond},
+		resetStrategy{"classic", false, 550 * time.Millisecond})
+}
+
 // connect resets the chip into download mode and syncs, like esptool's
-// default_reset (ClassicReset with the normal, then a longer, delay).
+// default_reset.
 func (l *loader) connect() error {
 	var last error
+	strategies := l.resetStrategies()
 	for attempt := range connectAttempts {
-		delay := 50 * time.Millisecond
-		if attempt%2 == 1 {
-			delay = 550 * time.Millisecond
-		}
+		rs := strategies[attempt%len(strategies)]
 		l.port.ResetInputBuffer()
-		if err := l.classicReset(delay); err != nil {
+		reset := l.classicReset
+		if rs.tight {
+			reset = l.tightReset
+		}
+		if err := reset(rs.delay); err != nil {
 			return fmt.Errorf("resetting the chip: %w", err)
 		}
 		var boot []byte
@@ -432,7 +559,7 @@ func (l *loader) connect() error {
 			l.flushInput()
 			l.port.ResetOutputBuffer()
 			if last = l.sync(); last == nil {
-				l.logf("connected (attempt %d)", attempt+1)
+				l.logf("connected (attempt %d, %s reset, %v)", attempt+1, rs.name, rs.delay)
 				return nil
 			}
 			time.Sleep(50 * time.Millisecond)
@@ -446,6 +573,26 @@ func (l *loader) connect() error {
 		}
 	}
 	return fmt.Errorf("%w to ESP32: %v", ErrConnect, last)
+}
+
+// tightReset is esptool's UnixTightReset: every step sets DTR and RTS
+// together, so the chip never sees EN released with IO0 high.
+func (l *loader) tightReset(delay time.Duration) error {
+	set := func(dtr, rts bool) error { _, err := setDTRRTS(l.port, dtr, rts); return err }
+	for _, st := range []struct{ dtr, rts bool }{{false, false}, {true, true}, {false, true}} {
+		if err := set(st.dtr, st.rts); err != nil {
+			return err
+		}
+	}
+	time.Sleep(100 * time.Millisecond)       // IO0 high, EN low: in reset
+	if err := set(true, false); err != nil { // IO0 low, EN high: out of reset
+		return err
+	}
+	time.Sleep(delay)
+	if err := set(false, false); err != nil { // IO0 high, done
+		return err
+	}
+	return l.port.SetDTR(false) // some drivers need DTR set on its own too
 }
 
 func (l *loader) classicReset(delay time.Duration) error {
@@ -672,8 +819,7 @@ func (l *loader) writeCompressed(p FlashPart, img []byte, progress func(int)) (i
 	progress(len(img))
 	l.logf("wrote %d bytes (%d compressed) at %#08x in %.1fs", len(img), len(comp), p.Offset, time.Since(start).Seconds())
 
-	_, got, err := l.check("calculate md5sum", opSPIFlashMD5, pack(p.Offset, uint32(len(img)), 0, 0), 0, 16,
-		timeoutPerMB(8, len(img)))
+	got, err := l.flashMD5(p.Offset, len(img))
 	if err != nil {
 		return 0, err
 	}

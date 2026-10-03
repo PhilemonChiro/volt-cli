@@ -31,8 +31,10 @@ func runSdk(args []string) int {
 	case "build":
 	case "install":
 		return runSdkInstall(args[1:])
+	case "setup":
+		return runSdkSetup(args[1:])
 	default:
-		stderr.Println("Usage: volt sdk install <pack.tar.gz>\n       volt sdk build <chip> [-o dir] [--work dir] [--also project]... [--no-verify] [-v]")
+		stderr.Println("Usage: volt sdk install <pack.tar.gz>\n       volt sdk setup <chip>\n       volt sdk build <chip> [-o dir] [--work dir] [--also project]... [--no-verify] [-v]")
 		if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 			return 0
 		}
@@ -192,6 +194,27 @@ func runSdkInstall(args []string) int {
 		return failed(r, err)
 	}
 	stdout.Printf("[green]Installed[/green] %s\n", toolchain.Tilde(dir))
+	return 0
+}
+
+// runSdkSetup installs the full ESP-IDF toolchain `volt sdk build` needs
+// (maintainers only): the pinned ESP-IDF clone and its tools.
+func runSdkSetup(args []string) int {
+	if len(args) != 1 {
+		stderr.Println("Usage: volt sdk setup <chip>")
+		return 2
+	}
+	tc, err := toolchain.ForIDF(strings.ToLower(args[0]))
+	if err != nil {
+		stderr.Printf("[red]%s[/red]\n", err)
+		return 1
+	}
+	if !tc.Install(toolchain.NewEmitter(false)) {
+		return 1
+	}
+	for _, n := range tc.Notes {
+		stdout.Printf("[dim]%s[/dim]\n", n)
+	}
 	return 0
 }
 

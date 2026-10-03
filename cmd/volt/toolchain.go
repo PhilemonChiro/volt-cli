@@ -56,6 +56,16 @@ func runToolchain(args []string) int {
 var tomlKeyRe = regexp.MustCompile(`(?m)^\s*(chip|name)\s*=\s*"([^"]+)"`)
 
 // projectInfo reads `chip = "…"` and `name = "…"` from dir/volt.toml.
+// tomlString reads a flat string key from dir's volt.toml ("" if absent).
+func tomlString(dir, key string) string {
+	b, _ := os.ReadFile(filepath.Join(dir, "volt.toml"))
+	re := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(key) + `\s*=\s*"([^"]*)"`)
+	if m := re.FindSubmatch(b); m != nil {
+		return string(m[1])
+	}
+	return ""
+}
+
 func projectInfo(dir string) (chip, name string) {
 	b, _ := os.ReadFile(filepath.Join(dir, "volt.toml"))
 	for _, m := range tomlKeyRe.FindAllSubmatch(b, -1) {

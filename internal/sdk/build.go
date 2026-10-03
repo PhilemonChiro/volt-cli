@@ -26,7 +26,11 @@ type App struct {
 	Sources   []string // Volt's C files in ESP-IDF's libmain.a order: main.c, runtime, drivers
 	Framework string   // Volt framework include dir
 	Out       string
+	Optimize  string // replaces the pack's -O flag for Volt's sources ("" keeps it)
 }
+
+// OptimizeFlags maps volt.toml's optimize setting to GCC flags.
+var OptimizeFlags = map[string]string{"debug": "-Og", "size": "-Os", "speed": "-O2"}
 
 // Tools are the host programs a pack build runs.
 type Tools struct {
@@ -74,6 +78,9 @@ func Build(ctx context.Context, pack string, s *Spec, app App, t Tools) (*Result
 	// ESP-IDF's names (drivers are all driver.c.obj).
 	start := time.Now()
 	cflags := expand(s.CFlags, rep)
+	if app.Optimize != "" {
+		cflags = withOptimize(cflags, app.Optimize)
+	}
 	for _, inc := range s.Includes {
 		cflags = append(cflags, "-I"+rep.Replace(inc))
 	}
@@ -353,4 +360,16 @@ func truncate(s string, n int) string {
 		return s[:n]
 	}
 	return s
+}
+
+// withOptimize swaps every -O flag in flags for opt (appending it if none).
+func withOptimize(flags []string, opt string) []string {
+	out := make([]string, 0, len(flags)+1)
+	for _, f := range flags {
+		if len(f) >= 2 && f[:2] == "-O" {
+			continue
+		}
+		out = append(out, f)
+	}
+	return append(out, opt)
 }

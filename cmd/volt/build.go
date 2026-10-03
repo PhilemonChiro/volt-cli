@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	"github.com/PhilemonChiro/volt-cli/internal/build"
+	"github.com/PhilemonChiro/volt-cli/internal/sdk"
 	"github.com/PhilemonChiro/volt-cli/internal/toolchain"
 )
 
 // project is the program a build, flash or run command works on.
 type project struct {
 	src, dir, chip, name string
+	optimize             string // volt.toml's optimize: debug, size, speed
 }
 
 // loadProject resolves the project from a file/dir argument; chip overrides
@@ -26,6 +28,7 @@ func loadProject(arg, chip string) (project, error) {
 	src, _ = filepath.Abs(src)
 	pr := project{src: src, dir: filepath.Dir(src)}
 	pr.chip, pr.name = projectInfo(pr.dir)
+	pr.optimize = tomlString(pr.dir, "optimize")
 	if chip != "" {
 		pr.chip = chip
 	}
@@ -38,6 +41,17 @@ func loadProject(arg, chip string) (project, error) {
 	}
 	pr.name = build.FirmwareName(pr.name)
 	return pr, nil
+}
+
+// applyOptimize validates the optimize level (flag over volt.toml).
+func applyOptimize(pr *project, flag string) error {
+	if flag != "" {
+		pr.optimize = flag
+	}
+	if _, ok := sdk.OptimizeFlags[pr.optimize]; pr.optimize != "" && !ok {
+		return fmt.Errorf("optimize must be debug, size or speed, not %q", pr.optimize)
+	}
+	return nil
 }
 
 // chipEnv returns the build environment for chip, reporting what is missing
@@ -95,15 +109,16 @@ func buildProject(pr project, devicesFlag string, env []string, asJSON bool, r *
 
 	return build.ESP32(build.Project{
 		Dir: pr.dir, Name: pr.name, Chip: pr.chip, Code: code,
-		Framework: framework, Devices: devs, Env: env,
+		Framework: framework, Devices: devs, Env: env, Optimize: pr.optimize,
 	}, r)
 }
 
 func runBuild(args []string) int {
-	fl, devices := newFlags("build", "[dir] [--chip c] [--json] [-v]")
+	fl, devices := newFlags("build", "[dir] [--chip c] [--optimize o] [--json] [-v]")
 	chip := fl.String("chip", "", "target `chip` (default: volt.toml's chip)")
 	asJSON := fl.Bool("json", false, "print progress as JSON lines")
 	verbose := fl.Bool("v", false, "show all build tool output")
+	optimize := fl.String("optimize", "", "compiler optimization: debug, size or speed (default: volt.toml's optimize, else the SDK pack's)")
 	pos, ok := parse(fl, args)
 	if !ok || len(pos) > 1 {
 		return 2
@@ -111,6 +126,9 @@ func runBuild(args []string) int {
 	r := build.NewReporter(*asJSON, *verbose)
 
 	pr, err := loadProject(first(pos), *chip)
+	if err == nil {
+		err = applyOptimize(&pr, *optimize)
+	}
 	if err != nil {
 		return failed(r, err)
 	}
@@ -121,6 +139,9 @@ func runBuild(args []string) int {
 	app, err := buildProject(pr, *devices, env, *asJSON, r)
 	if err != nil {
 		return failed(r, err)
+	}
+	if strings.HasPrefix(pr.chip, "esp32") {
+		r.Size = build.ESP32Size(app, pr.chip)
 	}
 	if !*asJSON {
 		app = toolchain.Tilde(app)

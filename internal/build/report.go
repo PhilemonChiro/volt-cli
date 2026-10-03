@@ -20,11 +20,20 @@ type Event struct {
 	Message  string `json:"message"`
 	Percent  int    `json:"percent"`
 	Artifact string `json:"artifact,omitempty"` // on done
+	Size     *Size  `json:"size,omitempty"`     // on done, when known
+}
+
+// Size is the firmware's footprint in bytes.
+type Size struct {
+	Flash    int64 `json:"flash"`               // app image
+	FlashMax int64 `json:"flash_max,omitempty"` // app partition
+	RAM      int64 `json:"ram,omitempty"`       // static DRAM (data + bss)
 }
 
 // Reporter prints events as JSON lines or for a terminal.
 type Reporter struct {
-	Verbose bool // show every tool output line
+	Verbose bool  // show every tool output line
+	Size    *Size // footprint to report with Done, if known
 
 	mu       sync.Mutex
 	json     *json.Encoder
@@ -117,11 +126,15 @@ func (r *Reporter) Done(msg, artifact string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.json != nil {
-		r.json.Encode(Event{Stage: "done", Message: msg, Percent: 100, Artifact: artifact})
+		r.json.Encode(Event{Stage: "done", Message: msg, Percent: 100, Artifact: artifact, Size: r.Size})
 		return
 	}
 	r.clearLine()
-	r.out.Printf("\n[bold green]✓[/bold green] %s\n  [dim]%s[/dim]\n\n", msg, artifact)
+	r.out.Printf("\n[bold green]✓[/bold green] %s\n  [dim]%s[/dim]\n", msg, artifact)
+	if r.Size != nil {
+		r.out.Printf("  [dim]%s[/dim]\n", r.Size)
+	}
+	r.out.Printf("\n")
 }
 
 // Fail reports failure.

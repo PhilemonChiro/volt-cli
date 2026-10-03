@@ -37,6 +37,14 @@ func runCheck(args []string) int {
 	nerr, nwarn := counts(errs)
 
 	if *asJSON {
+		type fix struct {
+			Title   string `json:"title"`
+			Line    int    `json:"line"`
+			Col     int    `json:"col"`
+			EndLine int    `json:"end_line"`
+			EndCol  int    `json:"end_col"`
+			Text    string `json:"text"`
+		}
 		type diag struct {
 			Line     int    `json:"line"`
 			Col      int    `json:"col"`
@@ -46,6 +54,8 @@ func runCheck(args []string) int {
 			Category string `json:"category"`
 			Message  string `json:"message"`
 			Hint     string `json:"hint,omitempty"`
+			Code     string `json:"code,omitempty"`
+			Fixes    []fix  `json:"fixes,omitempty"`
 		}
 		out := struct {
 			File        string `json:"file"`
@@ -57,8 +67,12 @@ func runCheck(args []string) int {
 		if errs != nil {
 			for _, d := range errs.List {
 				r := d.Region
-				out.Diagnostics = append(out.Diagnostics,
-					diag{r.StartLine, r.StartCol, r.EndLine, r.EndCol, d.Severity, d.Category, d.Message, d.Hint})
+				dd := diag{r.StartLine, r.StartCol, r.EndLine, r.EndCol, d.Severity, d.Category, d.Message, d.Hint, d.Code, nil}
+				for _, f := range d.Fixes {
+					fr := f.Region
+					dd.Fixes = append(dd.Fixes, fix{f.Title, fr.StartLine, fr.StartCol, fr.EndLine, fr.EndCol, f.Text})
+				}
+				out.Diagnostics = append(out.Diagnostics, dd)
 			}
 		}
 		enc := json.NewEncoder(os.Stdout)

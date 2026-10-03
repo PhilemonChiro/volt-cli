@@ -28,6 +28,7 @@ type Project struct {
 	Framework string // SDK framework dir (holds esp32/, include/)
 	Devices   string // device library (holds <prefix>/driver.c)
 	Env       []string
+	Optimize  string // "debug", "size", "speed", or "" for the pack's default
 }
 
 // ESP32 builds the project with the installed ESP-IDF pack (see package
@@ -80,6 +81,7 @@ func ESP32(p Project, r *Reporter) (string, error) {
 	res, err := sdk.Build(proc.Root, pack, spec, sdk.App{
 		Name: p.Name, Project: dir, Sources: srcs,
 		Framework: filepath.Join(p.Framework, "include"), Out: out,
+		Optimize: sdk.OptimizeFlags[p.Optimize],
 	}, tools)
 	if errors.Is(err, context.Canceled) {
 		return "", err
@@ -224,9 +226,14 @@ func FirmwareName(s string) string {
 	return s
 }
 
+// DefaultFlashBaud is the stub's write rate unless overridden; a failing
+// write falls back to lower rates on its own.
+const DefaultFlashBaud = 460800
+
 // FlashESP32 writes the built project to the board on port: the pack's
-// bootloader and partition table, then the app image.
-func FlashESP32(dir, chip, port string, env []string, r *Reporter) error {
+// bootloader and partition table, then the app image. Images flash already
+// holds are skipped unless full is set.
+func FlashESP32(dir, chip, port string, baud int, full bool, env []string, r *Reporter) error {
 	bdir := filepath.Join(dir, "build", chip)
 	pack, err := sdk.Find(chip)
 	if err != nil {
@@ -245,7 +252,7 @@ func FlashESP32(dir, chip, port string, env []string, r *Reporter) error {
 		return fmt.Errorf("expected one app image in %s, found %d; run volt build", filepath.Join(bdir, "build"), len(bins))
 	}
 	o := esptool.FlashOptions{
-		Chip: c, Port: port, Baud: 460800,
+		Chip: c, Port: port, Baud: baud, Full: full,
 		FlashMode: spec.FlashSettings["flash_mode"], FlashFreq: spec.FlashSettings["flash_freq"],
 		FlashSize: spec.FlashSettings["flash_size"],
 	}
@@ -305,4 +312,24 @@ func Artifact(dir, chip, name string) string {
 		return ""
 	}
 	return p
+}
+
+// CrashTools returns the project's built ELF and the chip's addr2line, for
+// decoding panic backtraces. Either is "" when not found.
+func CrashTools(dir, chip string, env []string) (elf, addr2line string) {
+	if els, _ := filepath.Glob(filepath.Join(dir, "build", chip, "build", "*.elf")); len(els) == 1 {
+		elf = els[0]
+	}
+	pack, err := sdk.Find(chip)
+	if err != nil {
+		return elf, ""
+	}
+	spec, err := sdk.LoadSpec(pack)
+	if err != nil {
+		return elf, ""
+	}
+	if t, err := esp32Tools(env, spec); err == nil {
+		addr2line = filepath.Join(t.Bin, spec.ToolPrefix+"addr2line")
+	}
+	return elf, addr2line
 }

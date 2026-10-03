@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -112,7 +113,9 @@ func selectPort(flag, chip string) (device.Port, error) {
 }
 
 func runFlash(args []string) int {
-	fl, _ := newFlags("flash", "[dir] [-p port] [--chip c] [--json]")
+	fl, _ := newFlags("flash", "[dir] [-p port] [--chip c] [--full] [--flash-baud n] [--json]")
+	full := fl.Bool("full", false, "write every image, even ones the board already has")
+	flashBaud := fl.Int("flash-baud", build.DefaultFlashBaud, "flashing `baud` rate (lower rates are tried if writing fails)")
 	portFlag := fl.String("p", "", "serial `port` (default: the only connected board for the chip)")
 	chip := fl.String("chip", "", "target `chip` (default: volt.toml's chip)")
 	asJSON := fl.Bool("json", false, "print progress as JSON lines")
@@ -141,7 +144,7 @@ func runFlash(args []string) int {
 	if err != nil {
 		return failed(r, err)
 	}
-	if err := build.FlashESP32(pr.dir, pr.chip, board.Port, env, r); err != nil {
+	if err := build.FlashESP32(pr.dir, pr.chip, board.Port, *flashBaud, *full, env, r); err != nil {
 		return failed(r, err)
 	}
 	r.Done("Flashed "+board.Port, app)
@@ -149,11 +152,13 @@ func runFlash(args []string) int {
 }
 
 func runMonitor(args []string) int {
-	fl, _ := newFlags("monitor", "[-p port] [-b baud] [--chip c] [--json]")
+	fl, _ := newFlags("monitor", "[-p port] [-b baud] [--chip c] [--elf file] [--no-decode] [--json]")
 	portFlag := fl.String("p", "", "serial `port` (default: the only connected board)")
 	baud := fl.Int("b", 0, "`baud` rate (default: serial.defaultBaud setting, else 115200)")
 	chip := fl.String("chip", "", "only consider boards of this `chip` (default: volt.toml's chip)")
 	asJSON := fl.Bool("json", false, `print {"line": …} JSON lines`)
+	elfFlag := fl.String("elf", "", "decode backtraces with this `ELF` (default: the project's last build)")
+	noDecode := fl.Bool("no-decode", false, "don't decode panic backtraces")
 	if pos, ok := parse(fl, args); !ok || len(pos) > 0 {
 		return 2
 	}
@@ -166,7 +171,23 @@ func runMonitor(args []string) int {
 		stderr.Printf("[red]volt monitor: %s[/red]\n", err)
 		return 1
 	}
-	if err := monitor(board.Port, baudFor(*baud, c), *asJSON); err != nil {
+	var dec *device.Decoder
+	if !*noDecode {
+		dir := "."
+		if *elfFlag != "" {
+			dir = ""
+		}
+		var env []string
+		if tc, err := toolchain.For(strings.ToLower(c), false); err == nil {
+			env, _ = tc.BuildEnv()
+		}
+		elf, a2l := build.CrashTools(dir, strings.ToLower(c), env)
+		if *elfFlag != "" {
+			elf = *elfFlag
+		}
+		dec = device.NewDecoder(elf, a2l)
+	}
+	if err := monitor(board.Port, baudFor(*baud, c), *asJSON, dec); err != nil {
 		stderr.Printf("[red]volt monitor: %s[/red]\n", err)
 		return 1
 	}
@@ -189,7 +210,10 @@ func baudFor(flag int, chip string) int {
 // prints {"line"} objects between {"event":"connected"} and
 // {"event":"disconnected"}, with {"event":"error"} before the latter if the
 // port went away or could not be opened.
-func monitor(port string, baud int, asJSON bool) error {
+//
+// dec, when set, decodes panic backtraces: each code address is followed by
+// its function and source line (in JSON, a {"backtrace": [...]} object).
+func monitor(port string, baud int, asJSON bool, dec *device.Decoder) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
 	event := func(name, msg string) {
@@ -213,6 +237,33 @@ func monitor(port string, baud int, asJSON bool) error {
 		} else {
 			fmt.Println(line)
 		}
+		frames, warning := dec.Line(line)
+		if warning != "" {
+			if asJSON {
+				enc.Encode(map[string]string{"event": "warning", "message": warning})
+			} else {
+				stderr.Printf("[yellow]%s[/yellow]\n", warning)
+			}
+		}
+		if len(frames) == 0 {
+			return
+		}
+		if asJSON {
+			enc.Encode(map[string]any{"backtrace": frames})
+			return
+		}
+		stdout.Println("[yellow]Decoded backtrace:[/yellow]")
+		for i, f := range frames {
+			where := "[dim]??[/dim]"
+			if f.Resolved {
+				where = fmt.Sprintf("%s [dim]at[/dim] %s:%d", f.Func, filepath.Base(f.File), f.Line)
+			}
+			if f.Inlined {
+				stdout.Printf("[yellow]      (inlined by) %s[/yellow]\n", where)
+			} else {
+				stdout.Printf("[yellow]  #%-2d %s %s[/yellow]\n", i, f.PC, where)
+			}
+		}
 	})
 	if err != nil {
 		msg := err.Error()
@@ -226,18 +277,24 @@ func monitor(port string, baud int, asJSON bool) error {
 }
 
 func runRun(args []string) int {
-	fl, devices := newFlags("run", "[dir] [-p port] [--chip c] [--json] [-v]")
+	fl, devices := newFlags("run", "[dir] [-p port] [--chip c] [--optimize o] [--full] [--flash-baud n] [--json] [-v]")
+	full := fl.Bool("full", false, "write every image, even ones the board already has")
+	flashBaud := fl.Int("flash-baud", build.DefaultFlashBaud, "flashing `baud` rate (lower rates are tried if writing fails)")
 	portFlag := fl.String("p", "", "serial `port` (default: the only connected board for the chip)")
 	chip := fl.String("chip", "", "target `chip` (default: volt.toml's chip)")
 	baud := fl.Int("b", 0, "monitor `baud` rate (default: serial.defaultBaud setting, else 115200)")
 	asJSON := fl.Bool("json", false, "print progress (then monitor lines) as JSON lines")
 	verbose := fl.Bool("v", false, "show all build and flash tool output")
+	optimize := fl.String("optimize", "", "compiler optimization: debug, size or speed (default: volt.toml's optimize, else the SDK pack's)")
 	pos, ok := parse(fl, args)
 	if !ok || len(pos) > 1 {
 		return 2
 	}
 	r := build.NewReporter(*asJSON, *verbose)
 	pr, err := loadProject(first(pos), *chip)
+	if err == nil {
+		err = applyOptimize(&pr, *optimize)
+	}
 	if err != nil {
 		return failed(r, err)
 	}
@@ -249,10 +306,12 @@ func runRun(args []string) int {
 	if err != nil {
 		return failed(r, err)
 	}
-	if _, err := buildProject(pr, *devices, env, *asJSON, r); err != nil {
+	app, err := buildProject(pr, *devices, env, *asJSON, r)
+	if err != nil {
 		return failed(r, err)
 	}
-	if err := build.FlashESP32(pr.dir, pr.chip, board.Port, env, r); err != nil {
+	r.Size = build.ESP32Size(app, pr.chip)
+	if err := build.FlashESP32(pr.dir, pr.chip, board.Port, *flashBaud, *full, env, r); err != nil {
 		return failed(r, err)
 	}
 
@@ -270,7 +329,8 @@ func runRun(args []string) int {
 	}
 	r.Step("connect", "Device on "+port, 98)
 	r.Done("Running on device", port)
-	if err := monitor(port, baudFor(*baud, pr.chip), *asJSON); err != nil {
+	elf, a2l := build.CrashTools(pr.dir, pr.chip, env)
+	if err := monitor(port, baudFor(*baud, pr.chip), *asJSON, device.NewDecoder(elf, a2l)); err != nil {
 		return failed(r, err)
 	}
 	return 0
