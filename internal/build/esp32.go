@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -115,6 +116,15 @@ func ESP32(p Project, r *Reporter) (string, error) {
 // ESP-IDF's -fdiagnostics-color=always; build.log keeps them).
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
 
+// exe adds Windows' .exe suffix to a toolchain command name for os.Stat;
+// exec.Command resolves the suffix on its own.
+func exe(name string) string {
+	if runtime.GOOS == "windows" {
+		return name + ".exe"
+	}
+	return name
+}
+
 // esp32Tools finds the pack's compiler in the toolchain.
 func esp32Tools(env []string, spec *sdk.Spec) (sdk.Tools, error) {
 	var path string
@@ -123,7 +133,7 @@ func esp32Tools(env []string, spec *sdk.Spec) (sdk.Tools, error) {
 			path = v
 		}
 	}
-	gcc := spec.ToolPrefix + "gcc"
+	gcc := exe(spec.ToolPrefix + "gcc")
 	for _, d := range filepath.SplitList(path + string(filepath.ListSeparator) + os.Getenv("PATH")) {
 		if fi, err := os.Stat(filepath.Join(d, gcc)); err == nil && !fi.IsDir() {
 			return sdk.Tools{Bin: d}, nil
@@ -329,7 +339,7 @@ func CrashTools(dir, chip string, env []string) (elf, addr2line string) {
 		return elf, ""
 	}
 	if t, err := esp32Tools(env, spec); err == nil {
-		addr2line = filepath.Join(t.Bin, spec.ToolPrefix+"addr2line")
+		addr2line = filepath.Join(t.Bin, exe(spec.ToolPrefix+"addr2line"))
 	}
 	return elf, addr2line
 }

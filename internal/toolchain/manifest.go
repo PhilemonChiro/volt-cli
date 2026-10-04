@@ -21,11 +21,10 @@ import (
 	"time"
 )
 
-// The toolchain mirror. Temporary host — move to the permanent domain before
-// shipping to customers (see volt-ide/src/main/toolchain-mirror.js).
+// The toolchain mirror (R2 bucket volt-dl behind dl.voltembedded.com).
 const (
 	mirrorTag   = "toolchains-2026.05"
-	mirrorBase  = "https://toolchains.sigma.co.zw/" + mirrorTag
+	mirrorBase  = "https://dl.voltembedded.com/" + mirrorTag
 	manifestURL = mirrorBase + "/manifest.json"
 	cacheTTL    = 24 * time.Hour
 )

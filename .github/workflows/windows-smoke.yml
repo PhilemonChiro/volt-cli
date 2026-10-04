@@ -1,0 +1,55 @@
+# Install volt on a fresh Windows runner from dl.voltembedded.com, install the
+# ESP32 toolchain, and build the blink example. Run by hand after a release.
+name: windows-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "volt version (default: latest)"
+        required: false
+
+jobs:
+  esp32-blink:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Install volt
+        run: |
+          $dl = "https://dl.voltembedded.com"
+          $v = "${{ inputs.version }}"
+          if (-not $v) { $v = (Invoke-RestMethod "$dl/latest.txt").Trim() }
+          Invoke-WebRequest "$dl/$v/volt-windows-amd64.zip" -OutFile volt.zip
+          Invoke-WebRequest "$dl/$v/SHA256SUMS" -OutFile SHA256SUMS
+          $want = (Select-String "volt-windows-amd64.zip" SHA256SUMS).Line.Split(" ")[0]
+          $got = (Get-FileHash volt.zip -Algorithm SHA256).Hash.ToLower()
+          if ($want -ne $got) { throw "checksum mismatch: $got != $want" }
+          Expand-Archive volt.zip -DestinationPath "$HOME\.volt\bin"
+          "$HOME\.volt\bin" | Out-File -Append $env:GITHUB_PATH
+          & "$HOME\.volt\bin\volt.exe" version
+
+      - name: Install ESP32 toolchain
+        run: |
+          volt toolchain install esp32
+          volt toolchain status esp32
+
+      - name: Build blink
+        run: |
+          New-Item -ItemType Directory blink | Out-Null
+          Set-Content blink\volt.toml "[project]`nchip = `"esp32`""
+          Set-Content blink\main.volt @"
+          hardware {
+              pin green = 23
+              pin red = 22
+              pin yellow = 21
+          }
+
+          every 100ms { red.toggle() }
+          every 400ms { green.toggle() }
+          every 600ms { yellow.toggle() }
+          "@
+          volt build blink -v
+          Get-ChildItem -Recurse blink\build -Include *.bin, *.elf | Select-Object FullName, Length

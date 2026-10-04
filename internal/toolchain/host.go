@@ -29,6 +29,8 @@ func Platform() string {
 		return "darwin-x86_64"
 	case "linux/amd64":
 		return "linux-x64"
+	case "windows/amd64":
+		return "win32-x64"
 	}
 	return ""
 }

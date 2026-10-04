@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "tag": "toolchains-2026.05",
-  "manifest_version": 8,
+  "manifest_version": 10,
   "min_ide_version": "2.0.10",
   "generated_at": "2026-10-02T15:36:48Z",
   "assets": {
@@ -22,6 +22,7 @@
       "kind": "compiler",
       "version": "13.2.rel1",
       "mirrors": [
+        "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-arm64.tar.xz",
         "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-arm64.tar.xz"
       ]
     },
@@ -42,6 +43,7 @@
       "kind": "compiler",
       "version": "13.2.rel1",
       "mirrors": [
+        "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-x86_64.tar.xz",
         "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-x86_64.tar.xz"
       ]
     },
@@ -62,6 +64,7 @@
       "kind": "compiler",
       "version": "13.2.rel1",
       "mirrors": [
+        "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-linux-x64.tar.xz",
         "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-linux-x64.tar.xz"
       ]
     },
@@ -69,6 +72,7 @@
       "filename": "volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz",
       "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz",
       "mirrors": [
+        "https://dl.voltembedded.com/toolchains-2026.05/volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz",
         "https://toolchains.sigma.co.zw/toolchains-2026.05/volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz"
       ],
       "sha256": "6390a1694ecb0179c62ba863c155c56b2b57a8a20421c661ab14f539dfc24b11",
@@ -88,6 +92,7 @@
       "filename": "xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
       "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
       "mirrors": [
+        "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
         "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz"
       ],
       "upstream": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20241119/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
@@ -108,6 +113,7 @@
       "filename": "xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
       "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
       "mirrors": [
+        "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
         "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz"
       ],
       "upstream": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20241119/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
@@ -128,6 +134,7 @@
       "filename": "xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
       "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
       "mirrors": [
+        "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
         "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz"
       ],
       "upstream": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20241119/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
@@ -143,6 +150,44 @@
       },
       "kind": "compiler",
       "version": "esp-14.2.0_20241119"
+    },
+    "xtensa-esp-elf-14.2.0-win32-x64": {
+      "filename": "xtensa-esp-elf-14.2.0_20241119-x86_64-w64-mingw32.tar.xz",
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-w64-mingw32.tar.xz",
+      "mirrors": [
+        "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-w64-mingw32.tar.xz"
+      ],
+      "sha256": "3ff9dff0f8ae9d7edd4b1af0577aa3e0d1b03a2dab9f94e065f10fd206600db8",
+      "size_bytes": 118495340,
+      "extract": {
+        "format": "tar.xz",
+        "strip_components": 1
+      },
+      "install_to": "xtensa-esp-elf",
+      "exposes": {
+        "xtensa-esp32-elf-gcc": "bin/xtensa-esp32-elf-gcc.exe"
+      },
+      "kind": "compiler",
+      "version": "esp-14.2.0_20241119"
+    },
+    "arm-gnu-toolchain-13.2-win32-x64": {
+      "filename": "arm-gnu-toolchain-13.2-mingw-w64-i686.tar.xz",
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-mingw-w64-i686.tar.xz",
+      "sha256": "5c9dad51e3c9da69b07f34f9b583036326ce7cdded6b29024daf6c7eec9c9b11",
+      "size_bytes": 115233164,
+      "extract": {
+        "format": "tar.xz",
+        "strip_components": 1
+      },
+      "install_to": "arm-gnu-toolchain",
+      "exposes": {
+        "arm-none-eabi-gcc": "bin/arm-none-eabi-gcc.exe"
+      },
+      "kind": "compiler",
+      "version": "13.2.rel1",
+      "mirrors": [
+        "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-mingw-w64-i686.tar.xz"
+      ]
     }
   },
   "chip_requirements": {
@@ -158,6 +203,10 @@
       "linux-x64": [
         "xtensa-esp-elf-14.2.0-linux-x64",
         "volt-sdk-esp32-idf5.4-ac74c4d4fd98"
+      ],
+      "win32-x64": [
+        "xtensa-esp-elf-14.2.0-win32-x64",
+        "volt-sdk-esp32-idf5.4-ac74c4d4fd98"
       ]
     },
     "rp2040": {
@@ -167,7 +216,10 @@
       "darwin-x86_64": [
         "arm-gnu-toolchain-13.2-darwin-x86_64"
       ],
-      "linux-x64": []
+      "linux-x64": [],
+      "win32-x64": [
+        "arm-gnu-toolchain-13.2-win32-x64"
+      ]
     },
     "stm32f103": {
       "darwin-arm64": [
@@ -176,7 +228,10 @@
       "darwin-x86_64": [
         "arm-gnu-toolchain-13.2-darwin-x86_64"
       ],
-      "linux-x64": []
+      "linux-x64": [],
+      "win32-x64": [
+        "arm-gnu-toolchain-13.2-win32-x64"
+      ]
     }
   },
   "known_issues": [],
