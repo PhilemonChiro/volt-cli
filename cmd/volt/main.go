@@ -39,6 +39,7 @@ func init() {
 		{"cache", "package [chip] -o file.tar.gz", "Package a warmed firmware compiler cache for publishing", runCache},
 		{"toolchain", "status|install|repair [chip]", "Check, install or repair a chip's build toolchain", runToolchain},
 		{"worker", "", "Serve the IDE worker protocol on stdin/stdout", runWorker},
+		{"spec", "", "Print the Volt language reference (Markdown)", runSpec},
 		{"version", "", "Print the volt version", func([]string) int { fmt.Println("volt", version); return 0 }},
 	}
 }

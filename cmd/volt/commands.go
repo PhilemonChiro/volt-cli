@@ -216,6 +216,17 @@ func runFmt(args []string) int {
 	return 0
 }
 
+func runSpec(args []string) int {
+	fl, devices := newFlags("spec", "")
+	pos, ok := parse(fl, args)
+	if !ok || len(pos) > 0 {
+		return 2
+	}
+	useDevices(*devices)
+	fmt.Print(compiler.LanguageSpec())
+	return 0
+}
+
 func runWorker(args []string) int {
 	fl, devices := newFlags("worker", "")
 	pos, ok := parse(fl, args)
