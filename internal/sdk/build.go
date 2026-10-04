@@ -332,7 +332,16 @@ type runner struct {
 // run runs a tool, returning its combined output; a failure's error holds
 // the output too.
 func (r *runner) run(name string, args ...string) (string, error) {
-	cmd := exec.CommandContext(r.ctx, name, args...)
+	cmdArgs := args
+	if n := argsLen(args); n > maxCmdLine {
+		rsp, err := responseFile(args)
+		if err != nil {
+			return "", err
+		}
+		defer os.Remove(rsp)
+		cmdArgs = []string{"@" + rsp}
+	}
+	cmd := exec.CommandContext(r.ctx, name, cmdArgs...)
 	cmd.Dir = r.dir
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
@@ -372,4 +381,30 @@ func withOptimize(flags []string, opt string) []string {
 		out = append(out, f)
 	}
 	return append(out, opt)
+}
+
+// maxCmdLine keeps tool command lines under Windows' 32K CreateProcess limit;
+// longer argument lists go through a GCC/binutils @response file.
+const maxCmdLine = 24000
+
+func argsLen(args []string) int {
+	n := 0
+	for _, a := range args {
+		n += len(a) + 3
+	}
+	return n
+}
+
+// responseFile writes args one per line, quoted for libiberty's buildargv
+// (backslash escapes, so Windows paths need theirs doubled).
+func responseFile(args []string) (string, error) {
+	f, err := os.CreateTemp("", "volt-*.rsp")
+	if err != nil {
+		return "", err
+	}
+	q := strings.NewReplacer(`\`, `\\`, `"`, `\"`)
+	for _, a := range args {
+		fmt.Fprintf(f, "\"%s\"\n", q.Replace(a))
+	}
+	return f.Name(), f.Close()
 }

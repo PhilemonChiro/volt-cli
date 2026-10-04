@@ -157,7 +157,9 @@ func checkCompiler(pack, bin string, spec *sdk.Spec, r *Reporter) error {
 	if err != nil {
 		return fmt.Errorf("%sgcc: %w", spec.ToolPrefix, err)
 	}
-	if got, _, _ := strings.Cut(string(v), "\n"); got != prov.Compiler {
+	got, _, _ := strings.Cut(string(v), "\n")
+	got = strings.Replace(strings.TrimSpace(got), "gcc.exe ", "gcc ", 1) // Windows
+	if got != prov.Compiler {
 		r.Message("warn", fmt.Sprintf("compiler %q differs from the pack's %q", got, prov.Compiler))
 	}
 	return nil
