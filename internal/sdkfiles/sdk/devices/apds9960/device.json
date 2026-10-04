@@ -1,0 +1,81 @@
+{
+  "name": "APDS9960",
+  "category": "light",
+  "interface": "i2c",
+  "default_address": "0x39",
+  "addresses": ["0x39"],
+  "description": "Gesture, proximity, RGB color sensor",
+  "c_prefix": "apds9960",
+  "c_source": "sensor_apds9960.c",
+  "methods": {
+    "proximity": {
+      "returns": "int",
+      "params": [],
+      "description": "Proximity value 0-255"
+    },
+    "red": {
+      "returns": "int",
+      "params": [],
+      "description": "Red channel"
+    },
+    "green": {
+      "returns": "int",
+      "params": [],
+      "description": "Green channel"
+    },
+    "blue": {
+      "returns": "int",
+      "params": [],
+      "description": "Blue channel"
+    }
+  },
+  "manufacturer": "Avago / Broadcom",
+  "datasheet": "https://docs.broadcom.com/doc/AV02-4191EN",
+  "specs": {
+    "voltage": "2.4V \u2013 3.6V (NOT 5V tolerant)",
+    "current": "1 \u03bcA sleep, 38 \u03bcA active",
+    "modes": "Proximity, Gesture, RGB color, Ambient light",
+    "proximity_range": "0\u2013100 mm",
+    "interface_speed": "I\u00b2C up to 400 kHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V ONLY \u2014 5V damages the chip"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "INT",
+        "type": "data",
+        "note": "Optional interrupt \u2014 falls when threshold crossed"
+      }
+    ]
+  },
+  "tips": [
+    "Use a level shifter on SDA/SCL if your MCU is 5V \u2014 chip is 3.3V only.",
+    "Gesture engine needs a few ms of training; expect noisy first reads.",
+    "Sun or strong IR sources confuse the gesture detector."
+  ],
+  "alternatives": [
+    {
+      "name": "VL53L0X",
+      "note": "Time-of-flight, true distance up to 2 m, no ambient/color."
+    }
+  ]
+}

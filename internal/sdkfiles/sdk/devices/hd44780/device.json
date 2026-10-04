@@ -1,0 +1,122 @@
+{
+  "alternatives": [
+    {
+      "name": "SSD1306",
+      "note": "128×64 OLED — much more flexible, sharper, no contrast pot needed."
+    }
+  ],
+  "c_prefix": "hd44780",
+  "c_source": "driver.c",
+  "category": "display",
+  "datasheet": "https://www.sparkfun.com/datasheets/LCD/HD44780.pdf",
+  "default_address": "0x27",
+  "addresses": ["0x27", "0x20", "0x21", "0x22", "0x23", "0x24", "0x25", "0x26", "0x3F", "0x38", "0x39", "0x3A", "0x3B", "0x3C", "0x3D", "0x3E"],
+  "description": "16x2/20x4 character LCD",
+  "init_args": "{bus_id}, {addr}, {cols}, {rows}",
+  "interface": "i2c",
+  "params": {"cols": {"type": "int", "default": 16}, "rows": {"type": "int", "default": 2}},
+  "max_speed": 100000,
+  "manufacturer": "Hitachi",
+  "methods": {
+    "backlight": {
+      "description": "Toggle backlight",
+      "params": [
+        {
+          "name": "on",
+          "type": "uint8_t"
+        }
+      ],
+      "returns": "void"
+    },
+    "clear": {
+      "description": "Clear display",
+      "params": [],
+      "returns": "void"
+    },
+    "print": {
+      "description": "Print text",
+      "params": [
+        {
+          "name": "text",
+          "type": "const char *"
+        }
+      ],
+      "returns": "void"
+    },
+    "set_cursor": {
+      "description": "Move cursor",
+      "params": [
+        {
+          "name": "col",
+          "type": "uint8_t"
+        },
+        {
+          "name": "row",
+          "type": "uint8_t"
+        }
+      ],
+      "returns": "void"
+    },
+    "reinit": {
+      "returns": "void",
+      "params": [],
+      "description": "Re-initialise the display (recovers garbled characters after noise or a supply dip); redraw afterwards"
+    }
+  },
+  "name": "HD44780",
+  "specs": {
+    "characters": "16×2, 16×4, 20×4 (controller is the same)",
+    "current": "1.5 mA logic + LED backlight (~20 mA per LED)",
+    "interface": "4-bit or 8-bit parallel, or I²C via PCF8574 backpack",
+    "voltage": "5V (logic — 3.3V works on some clones but contrast suffers)"
+  },
+  "tips": [
+    "Most hobby modules ship with a PCF8574 I²C backpack — much fewer pins. The Volt 'lcd16x2' / 'lcd20x4' drivers wrap this.",
+    "Always include the 10kΩ contrast pot — without it the display looks blank or has black blocks.",
+    "Custom characters: 8 CGRAM slots, 5×8 pixels each."
+  ],
+  "wiring": {
+    "pins": [
+      {
+        "label": "VSS",
+        "note": "Logic ground",
+        "type": "ground"
+      },
+      {
+        "label": "VDD",
+        "note": "5V logic supply",
+        "type": "power"
+      },
+      {
+        "label": "V0",
+        "note": "Contrast — wiper of a 10kΩ pot",
+        "type": "data"
+      },
+      {
+        "label": "RS",
+        "note": "Register select (cmd vs data)",
+        "type": "data"
+      },
+      {
+        "label": "RW",
+        "note": "Tie LOW for write-only",
+        "type": "data"
+      },
+      {
+        "label": "E",
+        "note": "Enable pulse",
+        "type": "clock"
+      },
+      {
+        "label": "D4-D7",
+        "note": "Data lines (4-bit mode)",
+        "type": "data"
+      },
+      {
+        "label": "A/K",
+        "note": "Backlight + / − with series resistor",
+        "type": "power"
+      }
+    ]
+  }
+}

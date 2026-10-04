@@ -1,0 +1,70 @@
+{
+  "name": "VEML7700",
+  "category": "light",
+  "interface": "i2c",
+  "default_address": "0x10",
+  "addresses": ["0x10"],
+  "description": "High-accuracy ambient light sensor",
+  "c_prefix": "veml7700",
+  "c_source": "sensor_veml7700.c",
+  "methods": {
+    "lux": {
+      "returns": "float",
+      "params": [],
+      "description": "Light in lux (corrected)"
+    },
+    "white": {
+      "returns": "float",
+      "params": [],
+      "description": "White channel"
+    }
+  },
+  "manufacturer": "Vishay",
+  "datasheet": "https://www.vishay.com/docs/84286/veml7700.pdf",
+  "specs": {
+    "voltage": "2.5V \u2013 3.6V",
+    "current": "45 \u03bcA",
+    "range": "0 \u2013 120k lux",
+    "resolution": "0.0036 lux/count at default gain",
+    "interface_speed": "I\u00b2C up to 400 kHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V ONLY \u2014 5V damages the chip"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to 3.3V"
+      }
+    ]
+  },
+  "tips": [
+    "Wider dynamic range than BH1750 \u2014 better for both very dim and very bright environments.",
+    "Configurable gain + integration time trades sensitivity for sample rate.",
+    "Optical filter approximates the human eye's response (photopic)."
+  ],
+  "alternatives": [
+    {
+      "name": "BH1750",
+      "note": "Cheaper, narrower range, simpler protocol."
+    },
+    {
+      "name": "TSL2591",
+      "note": "Even wider range; two diodes for IR rejection."
+    }
+  ]
+}

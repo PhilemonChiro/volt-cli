@@ -1,0 +1,80 @@
+{
+  "name": "MS5611",
+  "category": "sensor",
+  "interface": "i2c",
+  "default_address": "0x77",
+  "addresses": ["0x77", "0x76"],
+  "description": "High-resolution barometric pressure",
+  "c_prefix": "ms5611",
+  "c_source": "sensor_ms5611.c",
+  "methods": {
+    "temperature": {
+      "returns": "float",
+      "params": [],
+      "description": "Temperature in \u00b0C"
+    },
+    "pressure": {
+      "returns": "float",
+      "params": [],
+      "description": "Pressure in hPa"
+    }
+  },
+  "manufacturer": "TE Connectivity",
+  "datasheet": "https://www.te.com/usa-en/product-CAT-BLPS0036.html",
+  "specs": {
+    "voltage": "1.8V \u2013 3.6V (NOT 5V tolerant)",
+    "current": "1.4 \u03bcA standby, 12.5 \u03bcA at 1 Hz",
+    "pressure": "10 \u2013 1200 mbar \u00b11.5 mbar",
+    "resolution": "0.012 mbar (\u2248 10 cm altitude)",
+    "interface": "I\u00b2C up to 400 kHz or SPI up to 20 MHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V ONLY \u2014 5V damages the chip"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "CSB",
+        "type": "data",
+        "note": "Tie to VCC for I\u00b2C, low for SPI"
+      },
+      {
+        "label": "PS",
+        "type": "data",
+        "note": "Protocol select: high=I\u00b2C, low=SPI"
+      }
+    ]
+  },
+  "tips": [
+    "Popular in drones/quads as a barometric altimeter \u2014 high resolution for altitude hold.",
+    "Two conversions (D1 + D2) per reading; library handles the compensation math.",
+    "Encapsulate or shield from direct airflow if reading altitude \u2014 drafts give wild noise."
+  ],
+  "alternatives": [
+    {
+      "name": "BMP388",
+      "note": "Bosch \u2014 newer, similar accuracy, often cheaper."
+    },
+    {
+      "name": "LPS22HB",
+      "note": "ST \u2014 lower power, smaller package."
+    }
+  ]
+}

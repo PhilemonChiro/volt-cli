@@ -1,0 +1,105 @@
+{
+  "name": "DS3231",
+  "category": "time",
+  "interface": "i2c",
+  "default_address": "0x68",
+  "addresses": ["0x68"],
+  "description": "Real-time clock with battery backup",
+  "c_prefix": "ds3231",
+  "c_source": "sensor_ds3231.c",
+  "methods": {
+    "hours": {
+      "returns": "int",
+      "params": [],
+      "description": "Hour 0-23"
+    },
+    "minutes": {
+      "returns": "int",
+      "params": [],
+      "description": "Minute 0-59"
+    },
+    "seconds": {
+      "returns": "int",
+      "params": [],
+      "description": "Second 0-59"
+    },
+    "year": {
+      "returns": "int",
+      "params": [],
+      "description": "Year 2000-2099"
+    },
+    "month": {
+      "returns": "int",
+      "params": [],
+      "description": "Month 1-12"
+    },
+    "date": {
+      "returns": "int",
+      "params": [],
+      "description": "Day 1-31"
+    },
+    "temperature": {
+      "returns": "float",
+      "params": [],
+      "description": "RTC temperature \u00b0C"
+    }
+  },
+  "manufacturer": "Maxim Integrated (Analog Devices)",
+  "datasheet": "https://datasheets.maximintegrated.com/en/ds/DS3231.pdf",
+  "specs": {
+    "voltage": "2.3V \u2013 5.5V",
+    "current": "150 \u03bcA active, 1 \u03bcA standby (battery)",
+    "accuracy": "\u00b12 ppm (0\u201340\u00b0C) \u2248 \u00b11 minute / year",
+    "temp_sensor": "Built-in \u00b13\u00b0C",
+    "battery_life": "8\u201310 years on CR2032"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      },
+      {
+        "label": "SQW",
+        "type": "data",
+        "note": "Optional 1 Hz square-wave or alarm interrupt output"
+      },
+      {
+        "label": "32K",
+        "type": "clock",
+        "note": "Optional 32.768 kHz output"
+      }
+    ]
+  },
+  "tips": [
+    "TCXO (temperature-compensated XO) \u2014 orders of magnitude more accurate than DS1307.",
+    "Battery (CR2032) keeps time across power cycles.",
+    "Built-in temperature sensor is for clock compensation but exposed as a regular read."
+  ],
+  "alternatives": [
+    {
+      "name": "DS1307",
+      "note": "Cheaper but drifts ~20 s/month vs. DS3231's ~1 s/month. Skip it."
+    },
+    {
+      "name": "PCF8523",
+      "note": "NXP equivalent \u2014 slightly lower accuracy, very low power."
+    }
+  ]
+}

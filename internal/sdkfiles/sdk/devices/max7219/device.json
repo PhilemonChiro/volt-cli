@@ -1,0 +1,114 @@
+{
+  "name": "MAX7219",
+  "category": "display",
+  "interface": "spi",
+  "pins": {"cs": {"dir": "out"}},
+  "max_speed": 10000000,
+  "default_address": "",
+  "description": "LED dot matrix / 7-segment driver",
+  "c_prefix": "max7219",
+  "c_source": "spi_max7219.c",
+  "methods": {
+    "set_row": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "row",
+          "type": "int"
+        },
+        {
+          "name": "data",
+          "type": "int"
+        }
+      ],
+      "description": "Set matrix row"
+    },
+    "set_intensity": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "level",
+          "type": "int"
+        }
+      ],
+      "description": "Brightness 0-15"
+    },
+    "clear": {
+      "returns": "void",
+      "params": [],
+      "description": "Clear all"
+    },
+    "set_digit": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "pos",
+          "type": "int"
+        },
+        {
+          "name": "value",
+          "type": "int"
+        },
+        {
+          "name": "dp",
+          "type": "int"
+        }
+      ],
+      "description": "Set 7-seg digit"
+    }
+  },
+  "manufacturer": "Maxim Integrated",
+  "datasheet": "https://datasheets.maximintegrated.com/en/ds/MAX7219-MAX7221.pdf",
+  "specs": {
+    "voltage": "4.0V \u2013 5.5V (logic + LED supply)",
+    "current": "330 mA peak (all LEDs on full brightness)",
+    "outputs": "8 digits \u00d7 7-segment, or 8\u00d78 LED matrix",
+    "brightness_steps": "16",
+    "interface_speed": "SPI up to 10 MHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SCK",
+        "type": "clock",
+        "note": "SPI clock"
+      },
+      {
+        "label": "MOSI",
+        "type": "data",
+        "note": "Master Out / Slave In"
+      },
+      {
+        "label": "MISO",
+        "type": "data",
+        "note": "Master In / Slave Out"
+      },
+      {
+        "label": "CS",
+        "type": "data",
+        "note": "Chip select (active low)"
+      }
+    ]
+  },
+  "tips": [
+    "Daisy-chain by feeding each chip's DOUT into the next chip's DIN \u2014 same CS for all.",
+    "ISET resistor between ISET pin and VCC sets segment current \u2014 use 22k\u03a9 for normal LEDs, 10k\u03a9 pushes brighter.",
+    "MAX7219 sources 5V to segments \u2014 works for 2V LEDs through built-in driver; not for 12V LEDs."
+  ],
+  "alternatives": [
+    {
+      "name": "HT16K33",
+      "note": "I\u00b2C alternative \u2014 fewer pins on the MCU side."
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "name": "NeoPixel",
+  "category": "display",
+  "interface": "gpio",
+  "pins": {"pin": {"dir": "out"}},
+  "params": {"leds": {"type": "int", "default": 8}},
+  "default_address": "",
+  "init_args": "{pin}, {leds}",
+  "description": "WS2812B addressable RGB LEDs",
+  "c_prefix": "neopixel",
+  "c_source": "gpio_neopixel.c",
+  "methods": {
+    "set": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "index",
+          "type": "int"
+        },
+        {
+          "name": "r",
+          "type": "int"
+        },
+        {
+          "name": "g",
+          "type": "int"
+        },
+        {
+          "name": "b",
+          "type": "int"
+        }
+      ],
+      "description": "Set pixel color"
+    },
+    "clear": {
+      "returns": "void",
+      "params": [],
+      "description": "All pixels off"
+    },
+    "fill": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "r",
+          "type": "int"
+        },
+        {
+          "name": "g",
+          "type": "int"
+        },
+        {
+          "name": "b",
+          "type": "int"
+        }
+      ],
+      "description": "Fill all pixels"
+    },
+    "show": {
+      "returns": "void",
+      "params": [],
+      "description": "Update LED strip"
+    },
+    "set_brightness": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "brightness",
+          "type": "int"
+        }
+      ],
+      "description": "Global brightness 0-255"
+    }
+  },
+  "manufacturer": "Worldsemi (WS2812 / WS2812B / SK6812)",
+  "datasheet": "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+  "specs": {
+    "voltage": "4.5V \u2013 5.5V (some 3.3V variants exist \u2014 see SK6812)",
+    "current": "\u2248 60 mA per LED at full white",
+    "data_rate": "800 kHz NRZ \u2014 strict timing",
+    "color_depth": "24-bit (8 per RGB channel) or 32-bit on SK6812 RGBW"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "5V \u2014 beefy supply if you have many LEDs (60 mA each)"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": "Common with MCU ground"
+      },
+      {
+        "label": "DIN",
+        "type": "data",
+        "note": "Add a ~300\u03a9 series resistor; level-shift to 5V if MCU is 3.3V (74AHCT125)"
+      },
+      {
+        "label": "DOUT",
+        "type": "data",
+        "note": "Feeds the next LED's DIN \u2014 chain as many as your power supply can handle"
+      }
+    ]
+  },
+  "tips": [
+    "Add a 1000 \u03bcF capacitor across VCC/GND at the strip input \u2014 prevents the inrush spike from killing the first LED.",
+    "Level-shift the data line \u2014 3.3V MCUs are borderline for a 5V WS2812; failures are intermittent and maddening.",
+    "Disable interrupts during transmission if the MCU is busy \u2014 even a few \u03bcs of pause corrupts the frame.",
+    "First LED is often DEAD on cheap strips \u2014 solder a header to feed past it."
+  ],
+  "alternatives": [
+    {
+      "name": "SK6812",
+      "note": "RGBW variant (adds a white channel) \u2014 same protocol."
+    },
+    {
+      "name": "APA102",
+      "note": "SPI-style two-wire (clock + data) \u2014 no timing constraints, more robust on Pi/Linux."
+    }
+  ]
+}

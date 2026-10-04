@@ -1,0 +1,85 @@
+{
+  "name": "QMC5883L",
+  "category": "motion",
+  "interface": "i2c",
+  "default_address": "0x0D",
+  "addresses": ["0x0D"],
+  "description": "Digital compass / magnetometer",
+  "c_prefix": "qmc5883l",
+  "c_source": "sensor_qmc5883l.c",
+  "methods": {
+    "x": {
+      "returns": "float",
+      "params": [],
+      "description": "X magnetic field (gauss)"
+    },
+    "y": {
+      "returns": "float",
+      "params": [],
+      "description": "Y magnetic field"
+    },
+    "z": {
+      "returns": "float",
+      "params": [],
+      "description": "Z magnetic field"
+    },
+    "heading": {
+      "returns": "float",
+      "params": [],
+      "description": "Compass heading in degrees"
+    }
+  },
+  "manufacturer": "QST",
+  "datasheet": "https://datasheetspdf.com/pdf-file/1309218/QST/QMC5883L/1",
+  "specs": {
+    "voltage": "2.16V \u2013 3.6V",
+    "current": "75 \u03bcA standby",
+    "range": "\u00b12 G or \u00b18 G",
+    "resolution": "16-bit",
+    "sample_rate": "10 / 50 / 100 / 200 Hz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V ONLY \u2014 5V damages the chip"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "DRDY",
+        "type": "data",
+        "note": "Data ready interrupt"
+      }
+    ]
+  },
+  "tips": [
+    "Drop-in for the original HMC5883L \u2014 but different register layout. Many cheap 'HMC5883L' modules are actually QMC.",
+    "Calibrate for hard-iron (offset) and soft-iron (scale) distortion \u2014 uncalibrated heading is useless.",
+    "Tilt-compensate using accelerometer data for a usable compass on a tilted board."
+  ],
+  "alternatives": [
+    {
+      "name": "MMC5883MA",
+      "note": "Memsic \u2014 better accuracy and stability."
+    },
+    {
+      "name": "BNO055",
+      "note": "Has a magnetometer + sensor fusion \u2014 much easier to use for compass."
+    }
+  ]
+}

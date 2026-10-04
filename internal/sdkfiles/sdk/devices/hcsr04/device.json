@@ -1,0 +1,66 @@
+{
+  "name": "HCSR04",
+  "category": "distance",
+  "interface": "gpio",
+  "pins": {"trig": {"dir": "out"}, "echo": {"dir": "in"}},
+  "default_address": "",
+  "description": "Ultrasonic distance sensor (2-400cm)",
+  "c_prefix": "hcsr04",
+  "c_source": "driver.c",
+  "init_args": "{trig}, {echo}",
+  "methods": {
+    "distance_cm": {
+      "returns": "float",
+      "params": [],
+      "description": "Distance in centimeters"
+    }
+  },
+  "manufacturer": "Cytron / generic",
+  "datasheet": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf",
+  "specs": {
+    "voltage": "5V (not 3.3V tolerant \u2014 use level shifter on ECHO)",
+    "current": "15 mA active",
+    "range": "2 cm \u2013 4 m (practical: 5 cm \u2013 2 m)",
+    "resolution": "~3 mm at close range",
+    "beam_angle": "\u2248 15\u00b0"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "5V required"
+      },
+      {
+        "label": "TRIG",
+        "type": "data",
+        "note": "Pulse high \u2265 10 \u03bcs to start measurement"
+      },
+      {
+        "label": "ECHO",
+        "type": "data",
+        "note": "5V output \u2014 voltage divide to 3.3V for ESP32/RP2040"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      }
+    ]
+  },
+  "tips": [
+    "ECHO line is 5V \u2014 use a 10k\u03a9/20k\u03a9 divider before feeding into a 3.3V MCU.",
+    "Distance = (echo_us \u00d7 0.0343) / 2 cm (speed of sound at 20\u00b0C).",
+    "Reflective surfaces and angles below 30\u00b0 cause missed echoes."
+  ],
+  "alternatives": [
+    {
+      "name": "VL53L0X",
+      "note": "Time-of-flight laser, more accurate, much smaller, 3.3V, but max ~2 m and pricier."
+    },
+    {
+      "name": "JSN-SR04T",
+      "note": "Waterproof variant if you need outdoor / wet use."
+    }
+  ]
+}

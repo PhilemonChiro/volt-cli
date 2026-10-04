@@ -1,0 +1,75 @@
+{
+  "name": "DHT22",
+  "category": "sensor",
+  "interface": "gpio",
+  "pins": {"pin": {"dir": "io"}},
+  "default_address": "",
+  "description": "Temperature and humidity (AM2302, higher precision than DHT11)",
+  "c_prefix": "dht",
+  "c_source": "",
+  "init_args": "{pin}, 22",
+  "methods": {
+    "temperature": {
+      "returns": "float",
+      "params": [],
+      "description": "Temperature in \u00b0C"
+    },
+    "humidity": {
+      "returns": "float",
+      "params": [],
+      "description": "Humidity %"
+    }
+  },
+  "manufacturer": "Aosong",
+  "datasheet": "https://cdn-shop.adafruit.com/datasheets/Digital+humidity+and+temperature+sensor+AM2302.pdf",
+  "specs": {
+    "voltage": "3.3V \u2013 6V",
+    "current": "1.5 mA measuring, 50 \u03bcA standby",
+    "temp": "\u221240\u00b0C to +80\u00b0C \u00b10.5\u00b0C",
+    "humidity": "0 \u2013 100% RH \u00b12 \u2013 5%",
+    "sample_rate": "Every 2 s (slower than DHT11)"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "DATA",
+        "type": "data",
+        "note": "Pull-up 4.7k\u03a9\u201310k\u03a9 to VCC"
+      },
+      {
+        "label": "NC",
+        "type": "data",
+        "note": "Not connected"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      }
+    ]
+  },
+  "tips": [
+    "Marketed as AM2302 \u2014 same chip.",
+    "Single-wire protocol is timing-critical \u2014 many MCU libraries disable interrupts during read.",
+    "If you query faster than every 2 s you get the previous reading."
+  ],
+  "alternatives": [
+    {
+      "name": "AHT20",
+      "note": "I\u00b2C, cheaper, similar accuracy. Strongly recommended for new designs."
+    },
+    {
+      "name": "SHT31",
+      "note": "Sensirion \u2014 top-tier accuracy and reliability."
+    },
+    {
+      "name": "BME280",
+      "note": "Adds pressure if you need altitude / weather."
+    }
+  ]
+}

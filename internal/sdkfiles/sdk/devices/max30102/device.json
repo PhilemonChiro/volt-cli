@@ -1,0 +1,80 @@
+{
+  "name": "MAX30102",
+  "category": "health",
+  "interface": "i2c",
+  "default_address": "0x57",
+  "addresses": ["0x57"],
+  "description": "Pulse oximeter and heart rate (18-bit)",
+  "c_prefix": "max30102",
+  "c_source": "sensor_max30102.c",
+  "methods": {
+    "red": {
+      "returns": "int",
+      "params": [],
+      "description": "Red LED raw value"
+    },
+    "ir": {
+      "returns": "int",
+      "params": [],
+      "description": "IR LED raw value"
+    },
+    "temperature": {
+      "returns": "float",
+      "params": [],
+      "description": "Die temperature \u00b0C"
+    },
+    "is_finger_present": {
+      "returns": "int",
+      "params": [],
+      "description": "1 if finger detected"
+    }
+  },
+  "manufacturer": "Maxim Integrated",
+  "datasheet": "https://datasheets.maximintegrated.com/en/ds/MAX30102.pdf",
+  "specs": {
+    "voltage": "1.8V digital + 3.3V LED \u2014 breakout regulators handle both from a single 3.3V/5V input",
+    "current": "600 \u03bcA \u2013 4 mA",
+    "modes": "Heart-rate + SpO\u2082",
+    "leds": "Red (660 nm) + IR (880 nm)"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V ONLY \u2014 5V damages the chip"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "INT",
+        "type": "data",
+        "note": "FIFO threshold interrupt"
+      }
+    ]
+  },
+  "tips": [
+    "Designed for wearables \u2014 lower noise than MAX30100.",
+    "Place finger over the sensor with steady pressure; movement is the #1 source of bad readings.",
+    "Use the FIFO + interrupt rather than polling \u2014 keeps timing tight without main-loop work."
+  ],
+  "alternatives": [
+    {
+      "name": "MAX30100",
+      "note": "Older, slightly higher noise, still common in DIY kits."
+    }
+  ]
+}

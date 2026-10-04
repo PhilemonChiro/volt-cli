@@ -1,0 +1,92 @@
+{
+  "name": "SSD1306",
+  "category": "display",
+  "interface": "i2c",
+  "default_address": "0x3C",
+  "addresses": ["0x3C", "0x3D"],
+  "description": "128x64 OLED display",
+  "c_prefix": "ssd1306",
+  "c_source": "sensor_ssd1306.c",
+  "methods": {
+    "clear": {
+      "returns": "void",
+      "params": [],
+      "description": "Clear display"
+    },
+    "text": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "x",
+          "type": "int"
+        },
+        {
+          "name": "y",
+          "type": "int"
+        },
+        {
+          "name": "text",
+          "type": "string"
+        }
+      ],
+      "description": "Draw text"
+    },
+    "show": {
+      "returns": "void",
+      "params": [],
+      "description": "Flush to display"
+    }
+  },
+  "manufacturer": "Solomon Systech",
+  "datasheet": "https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf",
+  "specs": {
+    "voltage": "1.65V \u2013 3.3V (NOT 5V tolerant on cheap modules; some have regulators)",
+    "current": "20 mA all pixels on, 7 \u03bcA off",
+    "resolution": "128 \u00d7 64 or 128 \u00d7 32",
+    "interface": "I\u00b2C, SPI (4-wire or 3-wire)"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V ONLY \u2014 5V damages the chip"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "RST",
+        "type": "data",
+        "note": "Reset (some breakouts auto-reset; tie high if free)"
+      }
+    ]
+  },
+  "tips": [
+    "I\u00b2C version: address is usually 0x3C; very rarely 0x3D.",
+    "Burn-in is real \u2014 animate or sleep static screens after a few minutes.",
+    "Page mode is faster than horizontal mode for partial updates."
+  ],
+  "alternatives": [
+    {
+      "name": "SH1106",
+      "note": "Very similar \u2014 but framebuffer layout differs slightly (132 px wide internally)."
+    },
+    {
+      "name": "SSD1309",
+      "note": "Bigger version (2.42\" / 128\u00d764)."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "name": "MAX30100",
+  "category": "health",
+  "interface": "i2c",
+  "default_address": "0x57",
+  "addresses": ["0x57"],
+  "description": "Pulse oximeter and heart rate (16-bit)",
+  "c_prefix": "max30100",
+  "c_source": "sensor_max30100.c",
+  "methods": {
+    "red": {
+      "returns": "int",
+      "params": [],
+      "description": "Red LED raw value"
+    },
+    "ir": {
+      "returns": "int",
+      "params": [],
+      "description": "IR LED raw value"
+    },
+    "temperature": {
+      "returns": "float",
+      "params": [],
+      "description": "Die temperature \u00b0C"
+    },
+    "is_finger_present": {
+      "returns": "int",
+      "params": [],
+      "description": "1 if finger detected"
+    }
+  },
+  "manufacturer": "Maxim Integrated",
+  "datasheet": "https://datasheets.maximintegrated.com/en/ds/MAX30100.pdf",
+  "specs": {
+    "voltage": "1.8V (digital) + 3.3V (LEDs) \u2014 most breakouts handle this internally",
+    "current": "600 \u03bcA \u2013 4 mA depending on LED brightness",
+    "modes": "Heart-rate + SpO\u2082",
+    "leds": "Red (660 nm) + IR (880 nm)"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V ONLY \u2014 5V damages the chip"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to 3.3V"
+      },
+      {
+        "label": "INT",
+        "type": "data",
+        "note": "Interrupt when sample buffer reaches threshold"
+      }
+    ]
+  },
+  "tips": [
+    "Algorithm for SpO\u2082 / BPM is non-trivial \u2014 usually computed off-chip from raw samples.",
+    "Skin contact matters: finger too loose = noisy, too tight = no perfusion.",
+    "Many cheap modules ship with a wrong-value pull-up resistor \u2014 fix is documented online."
+  ],
+  "alternatives": [
+    {
+      "name": "MAX30102",
+      "note": "Newer chip, same role, lower noise, smaller footprint."
+    }
+  ]
+}

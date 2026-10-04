@@ -1,0 +1,91 @@
+{
+  "name": "ADS1115",
+  "category": "analog",
+  "interface": "i2c",
+  "default_address": "0x48",
+  "addresses": ["0x48", "0x49", "0x4A", "0x4B"],
+  "description": "16-bit 4-channel ADC",
+  "c_prefix": "ads1115",
+  "c_source": "sensor_ads1115.c",
+  "methods": {
+    "read_raw": {
+      "returns": "int",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int"
+        }
+      ],
+      "description": "Raw ADC value"
+    },
+    "voltage": {
+      "returns": "float",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int"
+        }
+      ],
+      "description": "Voltage in V"
+    }
+  },
+  "manufacturer": "Texas Instruments",
+  "datasheet": "https://www.ti.com/lit/ds/symlink/ads1115.pdf",
+  "specs": {
+    "voltage": "2.0V \u2013 5.5V",
+    "current": "150 \u03bcA active, 0.5 \u03bcA standby",
+    "channels": "4 single-ended or 2 differential",
+    "resolution": "16-bit (15-bit single-ended)",
+    "sample_rate": "8 to 860 SPS",
+    "interface_speed": "I\u00b2C up to 3.4 MHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      },
+      {
+        "label": "ADDR",
+        "type": "data",
+        "note": "Selects address 0x48 (GND) / 0x49 (VCC) / 0x4A (SDA) / 0x4B (SCL)"
+      },
+      {
+        "label": "ALERT",
+        "type": "data",
+        "note": "Optional threshold-comparator output"
+      }
+    ]
+  },
+  "tips": [
+    "Programmable gain amplifier (\u00b10.256V to \u00b16.144V) \u2014 set range to match your signal, larger range loses resolution.",
+    "Datasheet caveat: max input voltage = VDD + 0.3V regardless of PGA setting.",
+    "Use single-shot mode to save power; continuous mode samples non-stop."
+  ],
+  "alternatives": [
+    {
+      "name": "ADS1015",
+      "note": "12-bit version, cheaper, faster (3300 SPS) but coarser resolution."
+    },
+    {
+      "name": "MCP3008",
+      "note": "SPI 10-bit 8-channel \u2014 choose if you need more channels and don't care about resolution."
+    }
+  ]
+}

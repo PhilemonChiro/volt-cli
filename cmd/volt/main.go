@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/PhilemonChiro/volt-cli/internal/proc"
+	"github.com/PhilemonChiro/volt-cli/internal/sdkfiles"
 	"github.com/PhilemonChiro/volt-cli/internal/term"
 	"github.com/PhilemonChiro/volt-compiler"
 )
@@ -115,7 +116,11 @@ func useDevices(dir string) string {
 	}
 	if dir == "" {
 		if home, err := os.UserHomeDir(); err == nil {
-			if d := filepath.Join(home, ".volt", "sdk", "devices"); isDir(d) {
+			sdk := filepath.Join(home, ".volt", "sdk")
+			if err := sdkfiles.Ensure(sdk, version); err != nil {
+				fmt.Fprintln(os.Stderr, "volt: unpacking device library:", err)
+			}
+			if d := filepath.Join(sdk, "devices"); isDir(d) {
 				dir = d
 			}
 		}

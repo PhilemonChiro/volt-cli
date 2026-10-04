@@ -1,0 +1,70 @@
+{
+  "name": "AHT20",
+  "category": "sensor",
+  "interface": "i2c",
+  "default_address": "0x38",
+  "addresses": ["0x38"],
+  "description": "Temperature and humidity",
+  "c_prefix": "aht20",
+  "c_source": "sensor_aht20.c",
+  "methods": {
+    "temperature": {
+      "returns": "float",
+      "params": [],
+      "description": "Temperature in \u00b0C"
+    },
+    "humidity": {
+      "returns": "float",
+      "params": [],
+      "description": "Relative humidity %"
+    }
+  },
+  "manufacturer": "Aosong",
+  "datasheet": "https://cdn-shop.adafruit.com/product-files/4566/4566_AHT20-DataSheet.pdf",
+  "specs": {
+    "voltage": "2.2V \u2013 5.5V",
+    "current": "23 \u03bcA measure, 0.25 \u03bcA sleep",
+    "temp_range": "\u221240\u00b0C to +85\u00b0C \u00b10.3\u00b0C",
+    "humidity_range": "0\u2013100% RH \u00b12%",
+    "interface_speed": "I\u00b2C up to 400 kHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      }
+    ]
+  },
+  "tips": [
+    "Address is fixed at 0x38 \u2014 only one AHT20 per I\u00b2C bus without a multiplexer.",
+    "Needs 40 ms after power-on before the first measurement.",
+    "Replacement for the older AHT10 with better humidity accuracy."
+  ],
+  "alternatives": [
+    {
+      "name": "SHT31",
+      "note": "Sensirion equivalent, slightly more accurate, costlier."
+    },
+    {
+      "name": "BME280",
+      "note": "Adds pressure on top of T/H if you need altitude."
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "name": "LCD16x2",
+  "category": "display",
+  "interface": "i2c",
+  "max_speed": 100000,
+  "default_address": "0x27",
+  "addresses": ["0x27", "0x20", "0x21", "0x22", "0x23", "0x24", "0x25", "0x26", "0x3F", "0x38", "0x39", "0x3A", "0x3B", "0x3C", "0x3D", "0x3E"],
+  "description": "16x2 character LCD display (I2C backpack)",
+  "c_prefix": "hd44780",
+  "c_source": "",
+  "init_args": "{bus_id}, {addr}, 16, 2",
+  "methods": {
+    "clear": {
+      "returns": "void",
+      "params": [],
+      "description": "Clear the display"
+    },
+    "print": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "text",
+          "type": "string"
+        }
+      ],
+      "description": "Print text at cursor"
+    },
+    "set_cursor": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "col",
+          "type": "int"
+        },
+        {
+          "name": "row",
+          "type": "int"
+        }
+      ],
+      "description": "Move cursor (col 0-15, row 0-1)"
+    },
+    "backlight": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "on",
+          "type": "int"
+        }
+      ],
+      "description": "Toggle backlight on/off"
+    },
+    "create_char": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "slot",
+          "type": "int"
+        },
+        {
+          "name": "r0",
+          "type": "int"
+        },
+        {
+          "name": "r1",
+          "type": "int"
+        },
+        {
+          "name": "r2",
+          "type": "int"
+        },
+        {
+          "name": "r3",
+          "type": "int"
+        },
+        {
+          "name": "r4",
+          "type": "int"
+        },
+        {
+          "name": "r5",
+          "type": "int"
+        },
+        {
+          "name": "r6",
+          "type": "int"
+        },
+        {
+          "name": "r7",
+          "type": "int"
+        }
+      ],
+      "description": "Define custom character 0-7 from 8 rows of 5-bit pixels (top to bottom)"
+    },
+    "write_char": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "code",
+          "type": "int"
+        }
+      ],
+      "description": "Write a raw character code at the cursor (0-7 = custom chars)"
+    },
+    "reinit": {
+      "returns": "void",
+      "params": [],
+      "description": "Re-initialise the display (recovers garbled characters after noise or a supply dip); redraw afterwards"
+    }
+  },
+  "manufacturer": "Generic (HD44780 + PCF8574 backpack)",
+  "datasheet": "https://www.sparkfun.com/datasheets/LCD/HD44780.pdf",
+  "specs": {
+    "voltage": "5V (logic and backlight)",
+    "current": "1.5 mA + ~20 mA backlight",
+    "characters": "16 columns × 2 rows",
+    "interface_speed": "I²C up to 100 kHz (backpack)"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      },
+      {
+        "label": "Backlight jumper",
+        "type": "power",
+        "note": "Pull to disable backlight"
+      }
+    ]
+  },
+  "tips": [
+    "Address is usually 0x27 or 0x3F depending on backpack vendor — scan the bus if unsure.",
+    "Adjust the contrast pot on the backpack until characters are clearly visible.",
+    "Backlight current is significant (~20 mA) — disable when you don't need it for battery projects."
+  ],
+  "alternatives": [
+    {
+      "name": "LCD20x4",
+      "note": "Same chip, more characters."
+    },
+    {
+      "name": "SSD1306",
+      "note": "128×64 OLED if you need graphics or sharper text."
+    }
+  ]
+}

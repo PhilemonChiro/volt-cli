@@ -1,0 +1,94 @@
+{
+  "name": "PCA9685",
+  "category": "control",
+  "interface": "i2c",
+  "default_address": "0x40",
+  "addresses": ["0x40", "0x41", "0x42", "0x43", "0x44", "0x45", "0x46", "0x47", "0x48", "0x49", "0x4A", "0x4B", "0x4C", "0x4D", "0x4E", "0x4F"],
+  "description": "16-channel PWM/servo controller",
+  "c_prefix": "pca9685",
+  "c_source": "sensor_pca9685.c",
+  "methods": {
+    "set_servo": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int"
+        },
+        {
+          "name": "angle",
+          "type": "int"
+        }
+      ],
+      "description": "Set servo angle 0-180"
+    },
+    "set_duty": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int"
+        },
+        {
+          "name": "duty",
+          "type": "int"
+        }
+      ],
+      "description": "Set PWM duty 0-255"
+    }
+  },
+  "manufacturer": "NXP",
+  "datasheet": "https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf",
+  "specs": {
+    "voltage": "2.3V \u2013 5.5V (logic); separate V+ for LED/servo supply",
+    "current": "8 mA active",
+    "channels": "16 PWM outputs",
+    "resolution": "12-bit per channel",
+    "frequency": "24 Hz \u2013 1526 Hz (shared across all channels)"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      },
+      {
+        "label": "OE",
+        "type": "data",
+        "note": "Output enable \u2014 pull low to enable PWM, high to blank all"
+      },
+      {
+        "label": "V+",
+        "type": "power",
+        "note": "Servo/LED supply \u2014 separate from logic VCC (e.g. 6V for servos)"
+      }
+    ]
+  },
+  "tips": [
+    "Set PWM frequency to ~50 Hz for hobby servos, 1 kHz for LED dimming.",
+    "All channels share the same frequency \u2014 pick the one that fits your worst case.",
+    "Don't power servos from the MCU's USB rail \u2014 they brown out the MCU on startup."
+  ],
+  "alternatives": [
+    {
+      "name": "TLC59711",
+      "note": "12 channels, 16-bit resolution, SPI \u2014 better resolution for LED projects."
+    }
+  ]
+}

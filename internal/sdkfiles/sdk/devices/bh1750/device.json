@@ -1,0 +1,70 @@
+{
+  "name": "BH1750",
+  "category": "light",
+  "interface": "i2c",
+  "default_address": "0x23",
+  "addresses": ["0x23", "0x5C"],
+  "description": "Ambient light sensor",
+  "c_prefix": "bh1750",
+  "c_source": "sensor_bh1750.c",
+  "methods": {
+    "lux": {
+      "returns": "float",
+      "params": [],
+      "description": "Light intensity in lux"
+    }
+  },
+  "manufacturer": "Rohm",
+  "datasheet": "https://www.mouser.com/datasheet/2/348/bh1750fvi-e-186247.pdf",
+  "specs": {
+    "voltage": "2.4V \u2013 3.6V (typical 3.0V)",
+    "current": "120 \u03bcA active",
+    "range": "1 \u2013 65535 lux",
+    "resolution": "1 lux (high-res mode), 4 lux (low-res)",
+    "interface_speed": "I\u00b2C up to 400 kHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      },
+      {
+        "label": "ADDR",
+        "type": "data",
+        "note": "0x23 if ADDR=GND, 0x5C if ADDR=VCC"
+      }
+    ]
+  },
+  "tips": [
+    "Linear lux output \u2014 no log conversion needed (unlike a photoresistor).",
+    "High-resolution mode takes 120 ms per reading; one-shot mode saves power.",
+    "Better long-term stability than VEML7700 but smaller dynamic range."
+  ],
+  "alternatives": [
+    {
+      "name": "VEML7700",
+      "note": "Wider dynamic range (~120k lux), more sensitive at low light."
+    },
+    {
+      "name": "TSL2591",
+      "note": "Even wider range (188 \u03bclux to 88k lux); two diodes for IR rejection."
+    }
+  ]
+}

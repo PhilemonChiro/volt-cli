@@ -1,0 +1,29 @@
+{
+  "name": "SIM800L",
+  "category": "rf",
+  "interface": "uart",
+  "params": {"baud": {"type": "int", "default": 9600}},
+  "default_address": "",
+  "description": "Quad-band GSM/GPRS modem — send SMS, check signal and network registration",
+  "c_prefix": "sim800l",
+  "c_source": "driver.c",
+  "init_args": "{uart_id}",
+  "methods": {
+    "ready": {"returns": "bool", "params": [], "description": "true if the modem answers AT with OK"},
+    "registered": {"returns": "bool", "params": [], "description": "true when registered on the home or a roaming network"},
+    "signal": {"returns": "int", "params": [], "description": "Signal quality 0-31 (99 = unknown); 10+ is usable"},
+    "send_sms": {"returns": "bool", "params": [{"name": "number", "type": "string"}, {"name": "text", "type": "string"}], "description": "Send an SMS in text mode; blocks up to 10 s waiting for the network"}
+  },
+  "manufacturer": "SIMCom",
+  "datasheet": "https://www.elecrow.com/wiki/images/2/20/SIM800_Series_AT_Command_Manual_V1.09.pdf",
+  "specs": {"voltage": "3.4-4.4V (4.0V ideal) — NOT 3.3V, NOT 5V", "current": "2 A bursts on transmit; 1000 µF+ across VCC/GND", "logic": "2.8V — TX is fine into a 3.3V MCU, put ~1 kΩ in series on RX", "baud": "9600 default (autobaud on many units)"},
+  "wiring": {"pins": [
+    {"label": "VCC", "type": "power", "note": "4.0V from a Li-ion cell or a buck converter, never the MCU 3.3V pin"},
+    {"label": "GND", "type": "ground", "note": "Common ground with the MCU"},
+    {"label": "TXD", "type": "data", "note": "To MCU RX (GPIO16 on ESP32)"},
+    {"label": "RXD", "type": "data", "note": "From MCU TX (GPIO17 on ESP32) via 1 kΩ"},
+    {"label": "RST", "type": "data", "note": "Optional, active low"}
+  ]},
+  "tips": ["Status LED: blink every 1 s = searching, every 3 s = registered, reboot loops = supply sag.", "Attach the antenna before power.", "Registration takes 10-60 s after power-up; poll registered() before sending."],
+  "alternatives": [{"name": "SIM7600", "note": "4G/LTE — needed where 2G is switched off."}]
+}

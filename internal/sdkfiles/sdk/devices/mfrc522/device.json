@@ -1,0 +1,87 @@
+{
+  "name": "MFRC522",
+  "category": "communication",
+  "interface": "spi",
+  "pins": {"cs": {"dir": "out"}},
+  "max_speed": 10000000,
+  "default_address": "",
+  "description": "13.56MHz RFID reader",
+  "c_prefix": "mfrc522",
+  "c_source": "spi_mfrc522.c",
+  "methods": {
+    "is_card_present": {
+      "returns": "int",
+      "params": [],
+      "description": "1 if RFID card detected"
+    },
+    "read_uid": {
+      "returns": "int",
+      "params": [],
+      "description": "Read card UID, returns length"
+    }
+  },
+  "manufacturer": "NXP Semiconductors",
+  "datasheet": "https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf",
+  "specs": {
+    "voltage": "2.5V \u2013 3.3V (NOT 5V tolerant)",
+    "current": "13 \u2013 26 mA active",
+    "frequency": "13.56 MHz (NFC / MIFARE)",
+    "range": "Up to 50 mm (typical 25 mm)",
+    "supported_cards": "MIFARE Classic 1K/4K, MIFARE Ultralight, NTAG2xx"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SCK",
+        "type": "clock",
+        "note": "SPI clock"
+      },
+      {
+        "label": "MOSI",
+        "type": "data",
+        "note": "Master Out / Slave In"
+      },
+      {
+        "label": "MISO",
+        "type": "data",
+        "note": "Master In / Slave Out"
+      },
+      {
+        "label": "CS",
+        "type": "data",
+        "note": "Chip select (active low)"
+      },
+      {
+        "label": "RST",
+        "type": "data",
+        "note": "Reset (active low \u2014 pull high for normal operation)"
+      },
+      {
+        "label": "IRQ",
+        "type": "data",
+        "note": "Optional interrupt on card detect"
+      }
+    ]
+  },
+  "tips": [
+    "3.3V logic \u2014 use level shifters on SPI lines if your MCU is 5V (Arduino UNO).",
+    "MIFARE Classic crypto is broken \u2014 fine for hobby tags, not for security.",
+    "Reading distance suffers if the antenna is near metal \u2014 mount on plastic / wood."
+  ],
+  "alternatives": [
+    {
+      "name": "PN532",
+      "note": "Higher-end NFC controller, can emulate cards and do P2P."
+    }
+  ]
+}

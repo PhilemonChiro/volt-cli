@@ -1,0 +1,90 @@
+{
+  "name": "MCP4725",
+  "category": "analog",
+  "interface": "i2c",
+  "default_address": "0x60",
+  "addresses": ["0x60", "0x61", "0x62", "0x63", "0x64", "0x65", "0x66", "0x67"],
+  "description": "12-bit DAC analog output",
+  "c_prefix": "mcp4725",
+  "c_source": "sensor_mcp4725.c",
+  "methods": {
+    "write": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "value",
+          "type": "int"
+        }
+      ],
+      "description": "Set DAC value 0-4095"
+    },
+    "set_voltage": {
+      "returns": "void",
+      "params": [
+        {
+          "name": "voltage",
+          "type": "float"
+        },
+        {
+          "name": "vref",
+          "type": "float"
+        }
+      ],
+      "description": "Set output voltage"
+    }
+  },
+  "manufacturer": "Microchip",
+  "datasheet": "https://ww1.microchip.com/downloads/en/devicedoc/22039d.pdf",
+  "specs": {
+    "voltage": "2.7V \u2013 5.5V",
+    "current": "210 \u03bcA active, 60 nA powerdown",
+    "resolution": "12-bit (4096 steps)",
+    "output": "Rail-to-rail (VCC defines max output)",
+    "interface_speed": "I\u00b2C up to 3.4 MHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      },
+      {
+        "label": "OUT",
+        "type": "data",
+        "note": "Analog output (0V to VCC)"
+      },
+      {
+        "label": "A0",
+        "type": "data",
+        "note": "Address LSB: 0x60 (GND) or 0x61 (VCC)"
+      }
+    ]
+  },
+  "tips": [
+    "EEPROM stores last value \u2014 survives power cycle if you write to EEPROM (slower).",
+    "Output impedance is ~1 \u03a9 \u2014 drives loads down to ~1 k\u03a9 without a buffer.",
+    "For audio: writing samples at 22 kHz works but isn't an audio DAC \u2014 it's a slow control DAC."
+  ],
+  "alternatives": [
+    {
+      "name": "MCP4922",
+      "note": "Dual 12-bit SPI version \u2014 two outputs in one chip."
+    }
+  ]
+}

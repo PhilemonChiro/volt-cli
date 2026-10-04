@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+# Merged flash image (bootloader + partition table + app) built from this project.
+firmware = 'build/wokwi-flash.bin'
+elf = 'build/volt-framework.elf'

@@ -1,0 +1,98 @@
+{
+  "name": "NRF24L01",
+  "category": "communication",
+  "interface": "spi",
+  "pins": {"cs": {"dir": "out"}, "ce": {"dir": "out"}},
+  "params": {"channel": {"type": "int", "default": 76}},
+  "max_speed": 10000000,
+  "init_args": "0, {cs}, {ce}, {channel}",
+  "default_address": "",
+  "description": "2.4GHz wireless transceiver",
+  "c_prefix": "nrf24l01",
+  "c_source": "driver.c",
+  "methods": {
+    "send": {
+      "returns": "int",
+      "params": [
+        {
+          "name": "data",
+          "type": "string"
+        }
+      ],
+      "description": "Send data, returns 1 on success"
+    },
+    "available": {
+      "returns": "int",
+      "params": [],
+      "description": "1 if data waiting"
+    }
+  },
+  "manufacturer": "Nordic Semiconductor",
+  "datasheet": "https://infocenter.nordicsemi.com/pdf/nRF24L01_Product_Specification_v2_0.pdf",
+  "specs": {
+    "voltage": "1.9V \u2013 3.6V (NOT 5V tolerant)",
+    "current": "11.3 mA TX at 0 dBm, 13.5 mA RX",
+    "frequency": "2.4 GHz ISM",
+    "range": "Up to ~100 m line of sight (with PA/LNA variants up to 1 km)",
+    "data_rate": "250 kbps, 1 Mbps, or 2 Mbps"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SCK",
+        "type": "clock",
+        "note": "SPI clock"
+      },
+      {
+        "label": "MOSI",
+        "type": "data",
+        "note": "Master Out / Slave In"
+      },
+      {
+        "label": "MISO",
+        "type": "data",
+        "note": "Master In / Slave Out"
+      },
+      {
+        "label": "CS",
+        "type": "data",
+        "note": "Chip select (active low)"
+      },
+      {
+        "label": "CE",
+        "type": "data",
+        "note": "Chip enable \u2014 separate from CS"
+      },
+      {
+        "label": "IRQ",
+        "type": "data",
+        "note": "Optional interrupt"
+      }
+    ]
+  },
+  "tips": [
+    "POWER is the #1 cause of failure \u2014 add a 10 \u03bcF cap across VCC/GND at the module pins.",
+    "Many 'nRF24L01' modules from cheap sources are clones with worse range and reliability.",
+    "Use the same channel + address on both ends; pipe 0 is the default acknowledge pipe."
+  ],
+  "alternatives": [
+    {
+      "name": "ESP-NOW",
+      "note": "If you're already on ESP32 \u2014 built-in Wi-Fi-radio peer protocol, no extra hardware."
+    },
+    {
+      "name": "LoRa (SX127x)",
+      "note": "Sub-GHz, much longer range, lower data rate."
+    }
+  ]
+}

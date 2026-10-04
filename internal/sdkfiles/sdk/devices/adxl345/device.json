@@ -1,0 +1,28 @@
+{
+  "name": "ADXL345",
+  "category": "motion",
+  "interface": "i2c",
+  "default_address": "0x53",
+  "addresses": ["0x53", "0x1D"],
+  "description": "3-axis accelerometer (found on the GY-85 9-DoF board)",
+  "c_prefix": "adxl345",
+  "c_source": "driver.c",
+  "init_args": "{bus_id}, {addr}",
+  "methods": {
+    "x": {"returns": "float", "params": [], "description": "X acceleration in g"},
+    "y": {"returns": "float", "params": [], "description": "Y acceleration in g"},
+    "z": {"returns": "float", "params": [], "description": "Z acceleration in g"},
+    "magnitude": {"returns": "float", "params": [], "description": "Vector magnitude in g (1.0 at rest)"}
+  },
+  "manufacturer": "Analog Devices",
+  "datasheet": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL345.pdf",
+  "specs": {"voltage": "3.3V (GY-85 has an onboard regulator, 3.3-5V ok)", "range": "±2g (full resolution, 3.9 mg/LSB)", "sample_rate": "100 Hz"},
+  "wiring": {"pins": [
+    {"label": "VCC", "type": "power", "note": "3.3V or 5V on GY-85"},
+    {"label": "GND", "type": "ground", "note": ""},
+    {"label": "SDA", "type": "data", "note": "GPIO21 on ESP32"},
+    {"label": "SCL", "type": "clock", "note": "GPIO22 on ESP32"}
+  ]},
+  "tips": ["On the GY-85 this shares the bus with ITG3205 (0x68) and HMC5883L (0x1E) — declare all three on the same bus.", "Address 0x1D if SDO is pulled high (bare chip); GY-85 fixes it at 0x53."],
+  "alternatives": [{"name": "MPU6050", "note": "Accel + gyro in one chip."}]
+}

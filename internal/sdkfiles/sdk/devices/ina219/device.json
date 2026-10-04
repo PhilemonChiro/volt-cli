@@ -1,0 +1,95 @@
+{
+  "name": "INA219",
+  "category": "power",
+  "interface": "i2c",
+  "default_address": "0x40",
+  "addresses": ["0x40", "0x41", "0x42", "0x43", "0x44", "0x45", "0x46", "0x47", "0x48", "0x49", "0x4A", "0x4B", "0x4C", "0x4D", "0x4E", "0x4F"],
+  "description": "Voltage, current, and power monitor",
+  "c_prefix": "ina219",
+  "c_source": "sensor_ina219.c",
+  "methods": {
+    "voltage": {
+      "returns": "float",
+      "params": [],
+      "description": "Bus voltage in V"
+    },
+    "current": {
+      "returns": "float",
+      "params": [],
+      "description": "Current in A"
+    },
+    "power": {
+      "returns": "float",
+      "params": [],
+      "description": "Power in W"
+    },
+    "shunt_voltage": {
+      "returns": "float",
+      "params": [],
+      "description": "Shunt voltage in V"
+    }
+  },
+  "manufacturer": "Texas Instruments",
+  "datasheet": "https://www.ti.com/lit/ds/symlink/ina219.pdf",
+  "specs": {
+    "voltage": "3V \u2013 5.5V (logic); measures bus 0\u201326V",
+    "current": "1 mA active, 6 \u03bcA sleep",
+    "current_range": "Default \u00b13.2 A through a 0.1 \u03a9 shunt; \u00b1400 mA via gain change",
+    "resolution": "12-bit (\u2248 100 \u03bcA per LSB at default gain)",
+    "interface_speed": "I\u00b2C up to 3.4 MHz"
+  },
+  "wiring": {
+    "pins": [
+      {
+        "label": "VCC",
+        "type": "power",
+        "note": "3.3V or 5V"
+      },
+      {
+        "label": "GND",
+        "type": "ground",
+        "note": ""
+      },
+      {
+        "label": "SDA",
+        "type": "data",
+        "note": "Pull-up to VCC (often on breakout board)"
+      },
+      {
+        "label": "SCL",
+        "type": "clock",
+        "note": "Pull-up to VCC"
+      },
+      {
+        "label": "Vin+",
+        "type": "data",
+        "note": "Connect to + side of load"
+      },
+      {
+        "label": "Vin-",
+        "type": "data",
+        "note": "Connect to load \u2014 Vin+/Vin- straddle the shunt"
+      },
+      {
+        "label": "A0/A1",
+        "type": "data",
+        "note": "Address select (0x40 \u2013 0x4F)"
+      }
+    ]
+  },
+  "tips": [
+    "Default shunt is 0.1 \u03a9 \u2014 change if your load is < 100 mA (use bigger shunt for resolution) or > 3.2 A (use smaller).",
+    "Measures HIGH-side current \u2014 Vin+/Vin- are at supply potential, not ground.",
+    "Power calculation register saves you from manually multiplying V \u00d7 I."
+  ],
+  "alternatives": [
+    {
+      "name": "INA226",
+      "note": "Better accuracy + alert pin; 0\u201336V range."
+    },
+    {
+      "name": "INA3221",
+      "note": "3-channel version \u2014 useful for measuring multiple rails."
+    }
+  ]
+}

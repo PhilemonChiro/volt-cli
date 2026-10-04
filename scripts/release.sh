@@ -15,6 +15,9 @@ WEB="$ROOT/../web"
 rm -rf "$OUT" && mkdir -p "$OUT"
 cd "$ROOT"
 
+# The device library and framework ship inside the binary (internal/sdkfiles).
+rsync -a --delete ../volt/devices ../volt/framework internal/sdkfiles/sdk/
+
 for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
 	os=${t%/*} arch=${t#*/} name=volt-$os-$arch ext= cgo=0 cc=
 	[ "$os" = windows ] && ext=.exe
@@ -28,7 +31,8 @@ for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
 	if [ "$os" = windows ]; then
 		(cd "$OUT/$name" && zip -q "../$name.zip" "volt$ext")
 	else
-		tar -C "$OUT/$name" -czf "$OUT/$name.tar.gz" volt
+		# No macOS xattrs: GNU tar warns about LIBARCHIVE.xattr.* headers.
+		COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -C "$OUT/$name" -czf "$OUT/$name.tar.gz" volt
 	fi
 	rm -rf "${OUT:?}/$name"
 	echo "built $name"
