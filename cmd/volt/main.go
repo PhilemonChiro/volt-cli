@@ -36,11 +36,18 @@ func init() {
 		{"run", "[dir] [-p port] [--json]", "Build, flash, then monitor the board", runRun},
 		{"monitor", "[-p port] [-b baud]", "Show a board's serial output", runMonitor},
 		{"ports", "[--json] [--probe]", "List connected boards", runPorts},
-		{"sdk", "build <chip> [-o dir]", "Build and verify a prebuilt ESP-IDF pack (maintainers)", runSdk},
+		{"sdk", "sync | build <chip>", "Update the device library (sync), or build an ESP-IDF pack (maintainers)", runSdk},
 		{"cache", "package [chip] -o file.tar.gz", "Package a warmed firmware compiler cache for publishing", runCache},
+		{"history", "record|log|show|blame|restore|undo <project>", "The project's automatic change history: who changed what, with diffs", runHistory},
+		{"trust", "status|init|approve|revoke|digest [--json]", "Check or record which device libraries you approved (the IDE drives this)", runTrust},
 		{"toolchain", "status|install|repair [chip]", "Check, install or repair a chip's build toolchain", runToolchain},
 		{"worker", "", "Serve the IDE worker protocol on stdin/stdout", runWorker},
 		{"spec", "", "Print the Volt language reference (Markdown)", runSpec},
+		{"init", "[dir] [--force]", "Set a project up for AI agents (rules files, MCP configs)", runInit},
+		{"ai", "list|setup <app>|restart <app>|chat on|off|status [--json]", "Connect AI apps (Claude, Cursor, VS Code…) to Volt", runAI},
+		{"mcp", "[--root dir]...", "Serve the Volt harness to AI agents over MCP (stdio)", runMCP},
+		{"inbox-hook", "", "Claude Code hook: wake the session with Volt IDE messages (Connect AI installs it)", runInboxHook},
+		{"update", "[--check]", "Update volt to the latest release", runUpdate},
 		{"version", "", "Print the volt version", func([]string) int { fmt.Println("volt", version); return 0 }},
 	}
 }
@@ -117,8 +124,12 @@ func useDevices(dir string) string {
 	if dir == "" {
 		if home, err := os.UserHomeDir(); err == nil {
 			sdk := filepath.Join(home, ".volt", "sdk")
-			if err := sdkfiles.Ensure(sdk, version); err != nil {
-				fmt.Fprintln(os.Stderr, "volt: unpacking device library:", err)
+			if res, err := sdkfiles.Ensure(sdk, version); err != nil {
+				fmt.Fprintln(os.Stderr, "volt: updating device library:", err)
+			} else if res.NewerBy != "" {
+				fmt.Fprintf(os.Stderr, "volt: the device library was updated by volt %s, newer than this volt (%s). Run `volt update` (or update Volt IDE).\n", res.NewerBy, version)
+			} else if len(res.Kept) > 0 {
+				fmt.Fprintf(os.Stderr, "volt: %s changed locally, so this version's update wasn't applied. Run `volt sdk sync` to review.\n", sdkfiles.Short(res.Kept))
 			}
 			if d := filepath.Join(sdk, "devices"); isDir(d) {
 				dir = d
