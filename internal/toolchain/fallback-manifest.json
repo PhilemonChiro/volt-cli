@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "tag": "toolchains-2026.05",
-  "manifest_version": 10,
+  "manifest_version": 11,
   "min_ide_version": "2.0.10",
-  "generated_at": "2026-10-02T15:36:48Z",
+  "generated_at": "2026-10-05T08:17:57.801Z",
   "assets": {
     "arm-gnu-toolchain-13.2-darwin-arm64": {
       "filename": "arm-gnu-toolchain-13.2-darwin-arm64.tar.xz",
-      "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-arm64.tar.xz",
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-arm64.tar.xz",
       "upstream": "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-darwin-arm64-arm-none-eabi.tar.xz",
       "sha256": "39c44f8af42695b7b871df42e346c09fee670ea8dfc11f17083e296ea2b0d279",
       "size_bytes": 129557320,
@@ -20,15 +20,11 @@
         "arm-none-eabi-gcc": "bin/arm-none-eabi-gcc"
       },
       "kind": "compiler",
-      "version": "13.2.rel1",
-      "mirrors": [
-        "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-arm64.tar.xz",
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-arm64.tar.xz"
-      ]
+      "version": "13.2.rel1"
     },
     "arm-gnu-toolchain-13.2-darwin-x86_64": {
       "filename": "arm-gnu-toolchain-13.2-darwin-x86_64.tar.xz",
-      "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-x86_64.tar.xz",
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-x86_64.tar.xz",
       "upstream": "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-darwin-x86_64-arm-none-eabi.tar.xz",
       "sha256": "075faa4f3e8eb45e59144858202351a28706f54a6ec17eedd88c9fb9412372cc",
       "size_bytes": 139345848,
@@ -41,15 +37,11 @@
         "arm-none-eabi-gcc": "bin/arm-none-eabi-gcc"
       },
       "kind": "compiler",
-      "version": "13.2.rel1",
-      "mirrors": [
-        "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-x86_64.tar.xz",
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-darwin-x86_64.tar.xz"
-      ]
+      "version": "13.2.rel1"
     },
     "arm-gnu-toolchain-13.2-linux-x64": {
       "filename": "arm-gnu-toolchain-13.2-linux-x64.tar.xz",
-      "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/arm-gnu-toolchain-13.2-linux-x64.tar.xz",
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-linux-x64.tar.xz",
       "upstream": "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi.tar.xz",
       "sha256": "6cd1bbc1d9ae57312bcd169ae283153a9572bd6a8e4eeae2fedfbc33b115fdbb",
       "size_bytes": 179347712,
@@ -62,19 +54,11 @@
         "arm-none-eabi-gcc": "bin/arm-none-eabi-gcc"
       },
       "kind": "compiler",
-      "version": "13.2.rel1",
-      "mirrors": [
-        "https://dl.voltembedded.com/toolchains-2026.05/arm-gnu-toolchain-13.2-linux-x64.tar.xz",
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-linux-x64.tar.xz"
-      ]
+      "version": "13.2.rel1"
     },
     "volt-sdk-esp32-idf5.4-ac74c4d4fd98": {
       "filename": "volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz",
-      "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz",
-      "mirrors": [
-        "https://dl.voltembedded.com/toolchains-2026.05/volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz",
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz"
-      ],
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/volt-sdk-esp32-idf5.4-ac74c4d4fd98.tar.gz",
       "sha256": "6390a1694ecb0179c62ba863c155c56b2b57a8a20421c661ab14f539dfc24b11",
       "size_bytes": 17889283,
       "extract": {
@@ -90,11 +74,7 @@
     },
     "xtensa-esp-elf-14.2.0-darwin-arm64": {
       "filename": "xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
-      "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
-      "mirrors": [
-        "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz"
-      ],
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
       "upstream": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20241119/xtensa-esp-elf-14.2.0_20241119-aarch64-apple-darwin.tar.xz",
       "sha256": "b9732bb3cdcd6a50420c25eb9a8d90eb1216a0a0a274c8ffd4c2037167b5081f",
       "size_bytes": 167948176,
@@ -111,11 +91,7 @@
     },
     "xtensa-esp-elf-14.2.0-darwin-x86_64": {
       "filename": "xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
-      "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
-      "mirrors": [
-        "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz"
-      ],
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
       "upstream": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20241119/xtensa-esp-elf-14.2.0_20241119-x86_64-apple-darwin.tar.xz",
       "sha256": "1ca7a93825d5b84f6547fa73e6174acadb9af5c877f365e50e176936784383ea",
       "size_bytes": 182782108,
@@ -132,11 +108,7 @@
     },
     "xtensa-esp-elf-14.2.0-linux-x64": {
       "filename": "xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
-      "url": "https://github.com/PhilemonChiro/volt-toolchains/releases/download/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
-      "mirrors": [
-        "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz"
-      ],
+      "url": "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
       "upstream": "https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20241119/xtensa-esp-elf-14.2.0_20241119-x86_64-linux-gnu.tar.xz",
       "sha256": "e3e6dcf3d275c3c9ab0e4c8a9d93fd10e7efc035d435460576c9d95b4140c676",
       "size_bytes": 174652716,
@@ -154,9 +126,6 @@
     "xtensa-esp-elf-14.2.0-win32-x64": {
       "filename": "xtensa-esp-elf-14.2.0_20241119-x86_64-w64-mingw32.tar.xz",
       "url": "https://dl.voltembedded.com/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-w64-mingw32.tar.xz",
-      "mirrors": [
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/xtensa-esp-elf-14.2.0_20241119-x86_64-w64-mingw32.tar.xz"
-      ],
       "sha256": "3ff9dff0f8ae9d7edd4b1af0577aa3e0d1b03a2dab9f94e065f10fd206600db8",
       "size_bytes": 118495340,
       "extract": {
@@ -184,10 +153,7 @@
         "arm-none-eabi-gcc": "bin/arm-none-eabi-gcc.exe"
       },
       "kind": "compiler",
-      "version": "13.2.rel1",
-      "mirrors": [
-        "https://toolchains.sigma.co.zw/toolchains-2026.05/arm-gnu-toolchain-13.2-mingw-w64-i686.tar.xz"
-      ]
+      "version": "13.2.rel1"
     }
   },
   "chip_requirements": {
@@ -235,5 +201,5 @@
     }
   },
   "known_issues": [],
-  "signature": "ed25519:cnPzcC+1jQHAaCfh6jjtCb4A3q25nGeYYTpkJ0oYri8kQKfPz+MR1GnRp6/ItcH/Wqt29vAHHqIuQd+/5cEQCA=="
+  "signature": "ed25519:0hagY92J7MgJJdekDkwTbXGDBYF3GlH0V3Nzg8/cW7WRvPHIx24jvgnmV7DFsQcWKzkEVW0HZzstqVh5i/yFCA=="
 }

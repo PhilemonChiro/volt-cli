@@ -1,5 +1,5 @@
 {
-  "_comment": "Pinned Ed25519 public keys that may sign the toolchain manifest. SHIPS EMPTY = FAIL CLOSED: with no keys, remote manifests are rejected and the IDE uses only the baked-in FALLBACK_MANIFEST (OTA off, but safe). To enable signed toolchain OTA: (1) generate a keypair offline, (2) paste the PUBLIC key PEM here with a stable id and status 'active', (3) keep the PRIVATE key offline and sign with `publish-toolchains --key <path>`. See docs/toolchain-distribution.md. NEVER put a private key in this repo.",
+  "_comment": "Pinned Ed25519 public keys that may sign the toolchain manifest. SHIPS EMPTY = FAIL CLOSED: with no keys, remote manifests are rejected and the IDE uses only the baked-in FALLBACK_MANIFEST (OTA off, but safe). To enable signed toolchain OTA: (1) generate a keypair offline, (2) paste the PUBLIC key PEM here with a stable id and status 'active', (3) keep the PRIVATE key offline and sign with `npm run publish:toolchain-manifest` (volt-ide). See docs/toolchain-distribution.md. NEVER put a private key in this repo.",
   "keys": [
     {
       "id": "volt-toolchain-2026",

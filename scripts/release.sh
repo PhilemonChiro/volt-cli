@@ -15,8 +15,9 @@ WEB="$ROOT/../web"
 rm -rf "$OUT" && mkdir -p "$OUT"
 cd "$ROOT"
 
-# The device library and framework ship inside the binary (internal/sdkfiles).
-rsync -a --delete ../volt/devices ../volt/framework internal/sdkfiles/sdk/
+# The framework, device examples and default device libraries ship inside the
+# binary (internal/sdkfiles); everything else comes from the Grid.
+go run ./scripts/embedsdk
 
 for t in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
 	os=${t%/*} arch=${t#*/} name=volt-$os-$arch ext= cgo=0 cc=

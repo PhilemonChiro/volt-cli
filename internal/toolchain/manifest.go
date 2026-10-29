@@ -30,7 +30,7 @@ const (
 )
 
 // fallbackJSON ships inside the binary and is trusted implicitly. It mirrors
-// FALLBACK_MANIFEST in volt-ide/src/main/toolchain-mirror.js.
+// the manifest published to R2 by volt-ide/scripts/publish-toolchain-manifest.js.
 //
 //go:embed fallback-manifest.json
 var fallbackJSON []byte
