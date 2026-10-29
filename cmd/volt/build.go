@@ -83,6 +83,9 @@ func buildProject(pr project, devicesFlag string, env []string, asJSON bool, r *
 		return "", fmt.Errorf("no framework next to the device library (%s)", toolchain.Tilde(framework))
 	}
 
+	if err := checkApprovals(devs, framework, r); err != nil {
+		return "", err
+	}
 	r.Step("compile", "Compiling "+filepath.Base(pr.src)+"...", 5)
 	code, errs, err := compileFile(pr.src)
 	if err != nil {

@@ -26,7 +26,8 @@ type App struct {
 	Sources   []string // Volt's C files in ESP-IDF's libmain.a order: main.c, runtime, drivers
 	Framework string   // Volt framework include dir
 	Out       string
-	Optimize  string // replaces the pack's -O flag for Volt's sources ("" keeps it)
+	Optimize  string   // replaces the pack's -O flag for Volt's sources ("" keeps it)
+	Include   []string // headers force-included (-include) in Volt's sources, e.g. device libraries' header.h
 }
 
 // OptimizeFlags maps volt.toml's optimize setting to GCC flags.
@@ -90,6 +91,9 @@ func Build(ctx context.Context, pack string, s *Spec, app App, t Tools) (*Result
 		built    bool
 	}
 	var units []*unit
+	for _, h := range app.Include {
+		cflags = append(cflags, "-include", h)
+	}
 	for _, src := range app.Sources {
 		units = append(units, &unit{src: src, obj: objPath(obj, src), args: cflags})
 	}
