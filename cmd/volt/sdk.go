@@ -14,6 +14,7 @@ import (
 
 	"github.com/PhilemonChiro/volt-cli/internal/build"
 	"github.com/PhilemonChiro/volt-cli/internal/sdk"
+	"github.com/PhilemonChiro/volt-cli/internal/sdkfiles"
 	"github.com/PhilemonChiro/volt-cli/internal/toolchain"
 )
 
@@ -33,8 +34,10 @@ func runSdk(args []string) int {
 		return runSdkInstall(args[1:])
 	case "setup":
 		return runSdkSetup(args[1:])
+	case "sync":
+		return runSdkSync(args[1:])
 	default:
-		stderr.Println("Usage: volt sdk install <pack.tar.gz>\n       volt sdk setup <chip>\n       volt sdk build <chip> [-o dir] [--work dir] [--also project]... [--no-verify] [-v]")
+		stderr.Println("Usage: volt sdk sync [--from dir] [--take lib,...] [--keep lib,...] [--dry-run] [--json]\n       volt sdk install <pack.tar.gz>\n       volt sdk setup <chip>\n       volt sdk build <chip> [-o dir] [--work dir] [--also project]... [--no-verify] [-v]")
 		if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
 			return 0
 		}
@@ -180,6 +183,81 @@ func sdkBuild(chip, outDir, work, devicesFlag string, also []string, verify bool
 	st, _ := os.Stat(tgz)
 	stdout.Printf("[green]Archived[/green] %s (%.1f MB, sha256 %s)\n", toolchain.Tilde(tgz), float64(st.Size())/1e6, sum)
 	return nil
+}
+
+// runSdkSync updates ~/.volt/sdk, the one live device library, from the SDK
+// in this binary or, with --from, a folder (the repo's volt/ while developing
+// Volt). Libraries changed locally are listed, not overwritten, until taken
+// (--take) or kept (--keep).
+func runSdkSync(args []string) int {
+	fl, _ := newFlags("sdk sync", "[--from dir] [--take lib,...] [--keep lib,...] [--dry-run] [--auto] [--json]")
+	from := fl.String("from", "", "shipped SDK `dir` holding devices/, framework/, examples/devices (default: the one in this binary)")
+	take := fl.String("take", "", "comma-separated libraries to update even though they changed locally (framework, examples too)")
+	keep := fl.String("keep", "", "comma-separated libraries to keep as they are for this shipped version")
+	dry := fl.Bool("dry-run", false, "report what would change without changing anything")
+	auto := fl.Bool("auto", false, "apply this binary's updates only if it is a new version (what the IDE runs at startup); kept lists every library still waiting")
+	asJSON := fl.Bool("json", false, "print the result as JSON")
+	if pos, ok := parse(fl, args); !ok || len(pos) != 0 {
+		return 2
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		stderr.Printf("[red]volt sdk sync: %v[/red]\n", err)
+		return 1
+	}
+	dir := filepath.Join(home, ".volt", "sdk")
+	src, owner := sdkfiles.Embedded(), "cli"
+	if *from != "" {
+		src, owner = sdkfiles.FromDir(*from), "dev" // a developer's library: upgrades leave it alone
+	}
+	split := func(s string) []string {
+		var out []string
+		for _, p := range strings.Split(s, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	var res sdkfiles.Result
+	if *auto {
+		if res, err = sdkfiles.Ensure(dir, version); err == nil {
+			var waiting sdkfiles.Result
+			waiting, err = sdkfiles.Sync(src, dir, sdkfiles.Options{DryRun: true})
+			res.Kept = waiting.Kept
+		}
+	} else {
+		res, err = sdkfiles.Sync(src, dir, sdkfiles.Options{Owner: owner, Take: split(*take), Keep: split(*keep), DryRun: *dry})
+	}
+	if err != nil {
+		stderr.Printf("[red]volt sdk sync: %v[/red]\n", err)
+		return 1
+	}
+	if *asJSON {
+		b, _ := json.Marshal(res)
+		fmt.Println(string(b))
+		return 0
+	}
+	verb := map[bool]string{true: "would be ", false: ""}[*dry]
+	for _, l := range []struct {
+		label string
+		keys  []string
+	}{{"added", res.Added}, {"updated", res.Updated}} {
+		if len(l.keys) > 0 {
+			fmt.Printf("%s%s: %s\n", verb, l.label, sdkfiles.Short(l.keys))
+		}
+	}
+	if res.Backup != "" {
+		fmt.Printf("previous copies saved in %s\n", res.Backup)
+	}
+	if len(res.Kept) > 0 {
+		fmt.Printf("changed locally, not updated: %s\n  take the update: volt sdk sync --take %s\n  keep yours:      volt sdk sync --keep %s\n",
+			sdkfiles.Short(res.Kept), strings.ReplaceAll(sdkfiles.Short(res.Kept), ", ", ","), strings.ReplaceAll(sdkfiles.Short(res.Kept), ", ", ","))
+	}
+	if len(res.Added)+len(res.Updated)+len(res.Kept) == 0 {
+		fmt.Println("device library is up to date")
+	}
+	return 0
 }
 
 func runSdkInstall(args []string) int {
