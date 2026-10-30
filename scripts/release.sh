@@ -1,5 +1,6 @@
 #!/bin/sh
-# Build volt for every platform and publish to dl.voltembedded.com (R2 bucket volt-dl).
+# Build volt for every platform and publish to dl.voltembedded.com (R2 bucket volt-dl): under the version, and
+# under latest/ for links that always fetch the newest build.
 #   scripts/release.sh v0.1.0           build, package, upload, move latest
 #   scripts/release.sh v0.1.0 --dry     build and package only
 # Run on macOS: the darwin builds need cgo (serial port enumeration uses IOKit).
@@ -47,6 +48,11 @@ echo "$VERSION" > "$OUT/latest.txt"
 cd "$WEB"
 for f in "$OUT"/volt-* "$OUT/SHA256SUMS"; do
 	npx wrangler r2 object put "$BUCKET/$VERSION/$(basename "$f")" --file "$f" --remote
+done
+# The same files under latest/, so a link can always download the newest build:
+# https://dl.voltembedded.com/latest/volt-windows-amd64.zip
+for f in "$OUT"/volt-* "$OUT/SHA256SUMS"; do
+	npx wrangler r2 object put "$BUCKET/latest/$(basename "$f")" --file "$f" --cache-control "max-age=300" --remote
 done
 # latest.txt last, so installers never see a version whose files are not there yet.
 npx wrangler r2 object put "$BUCKET/latest.txt" --file "$OUT/latest.txt" \
