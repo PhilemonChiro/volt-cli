@@ -39,7 +39,7 @@ func ideOwned(exe string) bool {
 // the release's SHA256SUMS.
 func runUpdate(args []string) int {
 	fl, _ := newFlags("update", "[--check]")
-	check := fl.Bool("check", false, "only report whether a newer volt exists")
+	check := fl.Bool("check", false, "show the installed version and the latest; install nothing")
 	if pos, ok := parse(fl, args); !ok || len(pos) != 0 {
 		return 2
 	}
@@ -48,11 +48,12 @@ func runUpdate(args []string) int {
 		stderr.Printf("[red]volt update: %v[/red]\n", err)
 		return 1
 	}
-	if ideOwned(exe) {
+	ide, dev := ideOwned(exe), !sdkfiles.IsRelease(version)
+	if !*check && ide {
 		stderr.Println("This volt is part of Volt IDE, which updates it together with the IDE (Volt IDE › Check for Updates).")
 		return 1
 	}
-	if !sdkfiles.IsRelease(version) {
+	if !*check && dev {
 		stderr.Printf("This is a development build (%s); build it from source instead.\n", version)
 		return 1
 	}
@@ -62,12 +63,26 @@ func runUpdate(args []string) int {
 		return 1
 	}
 	v := strings.TrimSpace(string(latest))
-	if sdkfiles.Compare(v, version) <= 0 {
-		fmt.Printf("volt %s is the latest.\n", version)
+	newer := !dev && sdkfiles.Compare(v, version) > 0
+	if *check {
+		// the version you have, and the newest release when it's a different one
+		switch {
+		case dev:
+			fmt.Printf("Installed  %s (a development build)\nLatest     %s\n", version, v)
+		case !newer:
+			fmt.Printf("Installed  %s, the latest\n", version)
+		default:
+			fmt.Printf("Installed  %s\nLatest     %s\n", version, v)
+			if ide {
+				fmt.Println("\nUpdate Volt IDE to get it: Volt IDE › Check for Updates.")
+			} else {
+				fmt.Println("\nRun `volt update` to install it.")
+			}
+		}
 		return 0
 	}
-	if *check {
-		fmt.Printf("volt %s is available (you have %s). Run `volt update`.\n", v, version)
+	if !newer {
+		fmt.Printf("volt %s is the latest.\n", version)
 		return 0
 	}
 	if err := install(v, exe); err != nil {
