@@ -28,6 +28,7 @@ var commands []command
 
 func init() {
 	commands = []command{
+		{"new", "<name> [--chip c] [--template t]", "Create a project: volt.toml and a starting main.volt", runNew},
 		{"check", "[file|dir]", "Type-check and validate hardware without building", runCheck},
 		{"compile", "[file|dir] [-o out.c]", "Compile to C (stdout unless -o)", runCompile},
 		{"fmt", "[--check] [paths...]", "Format .volt files in place", runFmt},
