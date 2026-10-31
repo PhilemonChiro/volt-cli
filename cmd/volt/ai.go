@@ -47,7 +47,7 @@ type aiResult struct {
 }
 
 func runAI(args []string) int {
-	fl, _ := newFlags("ai", "list|setup <app>|restart <app>|chat on|off|status [--json]")
+	fl, _ := newFlags("ai", "list|setup <app>|restart <app> [--json]")
 	asJSON := fl.Bool("json", false, "machine-readable output")
 	pos, ok := parse(fl, args)
 	if !ok || len(pos) == 0 {
@@ -95,24 +95,6 @@ func runAI(args []string) int {
 				state = "installed"
 			}
 			fmt.Printf("  %-15s %-15s %s\n", c.ID, c.Name, state)
-		}
-		return 0
-
-	case "chat":
-		if len(pos) < 2 || (pos[1] != "on" && pos[1] != "off" && pos[1] != "status") {
-			stderr.Printf("[red]volt ai chat: on, off or status[/red]\n")
-			return 2
-		}
-		res := aiChat(pos[1], volt)
-		if *asJSON {
-			emit(res)
-		} else if res.OK {
-			stdout.Printf("[green]✓[/green] %s\n", res.Message)
-		} else {
-			stderr.Printf("[red]✗ %s[/red]\n", res.Message)
-		}
-		if !res.OK {
-			return 1
 		}
 		return 0
 

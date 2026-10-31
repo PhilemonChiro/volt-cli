@@ -45,9 +45,8 @@ func init() {
 		{"worker", "", "Serve the IDE worker protocol on stdin/stdout", runWorker},
 		{"spec", "", "Print the Volt language reference (Markdown)", runSpec},
 		{"init", "[dir] [--force]", "Set a project up for AI agents (rules files, MCP configs)", runInit},
-		{"ai", "list|setup <app>|restart <app>|chat on|off|status [--json]", "Connect AI apps (Claude, Cursor, VS Code…) to Volt", runAI},
+		{"ai", "list|setup <app>|restart <app> [--json]", "Connect AI apps (Claude, Cursor, VS Code…) to Volt", runAI},
 		{"mcp", "[--root dir]...", "Serve the Volt harness to AI agents over MCP (stdio)", runMCP},
-		{"inbox-hook", "", "Claude Code hook: wake the session with Volt IDE messages (Connect AI installs it)", runInboxHook},
 		{"update", "[--check]", "Update volt to the latest release", runUpdate},
 		{"version", "", "Print the volt version", func([]string) int { fmt.Println("volt", version); return 0 }},
 	}
@@ -71,6 +70,8 @@ func main() {
 		return
 	case "--version":
 		name = "version"
+	case "inbox-hook": // removed; older versions installed it as a Claude Code hook
+		os.Exit(removeInboxHook())
 	}
 	for _, c := range commands {
 		if c.name == name {

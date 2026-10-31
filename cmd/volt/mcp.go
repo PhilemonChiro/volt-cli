@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -98,7 +99,7 @@ var pinModes = map[string]bool{"output": true, "input": true, "pullupinput": tru
 	"analog": true, "pwm": true, "servo": true, "touch": true, "dac": true}
 
 // missingDriverNext says what to do when a device has no Volt driver.
-func missingDriverNext(unknown map[string][]string) string {
+func missingDriverNext(unknown map[string][]string, devDir string) string {
 	var modes, devices []string
 	for name := range unknown {
 		if pinModes[strings.ToLower(name)] {
@@ -114,7 +115,7 @@ func missingDriverNext(unknown map[string][]string) string {
 		parts = append(parts, strings.Join(modes, ", ")+" is a pin type, not a device: declare it as `pin name: "+modes[0]+" = <pin>` (see the pins section of volt_spec); no driver is needed.")
 	}
 	if len(devices) > 0 {
-		parts = append(parts, "No Volt driver for "+strings.Join(devices, ", ")+". If it is a plain analog or digital part (e.g. an MQ-2 gas sensor's AO output, a PIR, a button, a relay), use a pin type such as `pin gas: Analog = 34` and the threshold logic in Volt — no driver needed. If it needs a protocol (I2C/SPI/UART registers, timing), offer to write a driver: model device.json and the C on device_card of a similar existing device, create it with library_write (the user reviews and approves it in Volt IDE), then use it. Don't stop at telling the user there is no driver.")
+		parts = append(parts, "No Volt driver for "+strings.Join(devices, ", ")+". If it is a plain analog or digital part (e.g. an MQ-2 gas sensor's AO output, a PIR, a button, a relay), use a pin type such as `pin gas: Analog = 34` and the threshold logic in Volt — no driver needed (an MQ gas sensor reads high for 1-3 min after power-up while its heater warms: ignore it, or don't alarm, until then). If it needs a protocol (I2C/SPI/UART registers, timing), offer to write a driver: read device.json, header.h and driver.c of a similar existing device in "+devDir+" (e.g. dht22 for single-wire timing, bme280 for I2C), create it with library_write (the user reviews and approves it in Volt IDE), then use it. Don't stop at telling the user there is no driver.")
 	}
 	return strings.Join(parts, " ")
 }
@@ -158,7 +159,7 @@ func newMCPServer(allowed []string, devDir string) *mcp.Server {
 			}
 			out := cardsOut{Cards: cards, Unknown: unknown}
 			if unknown != nil {
-				out.Next = missingDriverNext(unknown)
+				out.Next = missingDriverNext(unknown, devDir)
 			}
 			return nil, out, nil
 		})
@@ -288,8 +289,17 @@ func loadProgram(in programIn, allowed []string) (src, file string, cleanup func
 	return "", "", cleanup, errors.New("give path or source")
 }
 
+// within reports whether path lies inside one of dirs. macOS and Windows
+// file systems ignore letter case (~/dev is ~/Dev), so the compare does too.
 func within(path string, dirs []string) bool {
+	fold := runtime.GOOS == "darwin" || runtime.GOOS == "windows"
+	if fold {
+		path = strings.ToLower(path)
+	}
 	for _, d := range dirs {
+		if fold {
+			d = strings.ToLower(d)
+		}
 		if rel, err := filepath.Rel(d, path); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			return true
 		}

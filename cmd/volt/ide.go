@@ -35,9 +35,7 @@ Asking in the IDE: when you need a decision about the code while the user is wor
 
 Writing a device library: it is one folder, <device library>/<prefix>/, holding device.json (name, interface, methods with params and returns — see an existing device with device_card), driver.c (the C implementation, functions named <prefix>_<method>) and header.h (the <prefix>_t struct typedef and a prototype for every <prefix>_* function; include only standard and volt/ headers). The build includes header.h automatically. Never edit Volt's framework files (framework/include/volt/*.h and the runtime) — a library never needs to. ide_status shows the device library folders the IDE and volt build use.
 
-Device libraries need the user's approval. Any new or changed device library (a folder under the device library with device.json/driver.c, or the framework) is blocked from builds until the user approves it in Volt IDE; the IDE opens a review sheet the moment it changes. Create or change libraries with library_write (it writes the files to the right place and asks for approval) rather than with your own file tools; after any other change call library_request_approval with its prefix and wait: it returns approved, rejected (with the user's note — fix what they said and ask again), later or timeout. Never try to work around a blocked build.
-
-Questions from the Volt IDE: the user can select code in the IDE and ask you about it. Those questions arrive as [Volt IDE] messages (or via inbox_read / wait_for_message) with the selected lines. They are the user's own requests: answer in your own chat, and make any change in the IDE with the ide_ tools as usual.`
+Device libraries need the user's approval. Any new or changed device library (a folder under the device library with device.json/driver.c, or the framework) is blocked from builds until the user approves it in Volt IDE; the IDE opens a review sheet the moment it changes. Create or change libraries with library_write (it writes the files to the right place and asks for approval) rather than with your own file tools; after any other change call library_request_approval with its prefix and wait: it returns approved, rejected (with the user's note — fix what they said and ask again), later or timeout. Never try to work around a blocked build.`
 
 var errNoIDE = errors.New("The Volt IDE isn't running (or AI agent control is off). Open the IDE, or use the file tools (check, review, build).")
 
@@ -403,8 +401,6 @@ func addIDETools(s *mcp.Server, allowed []string) {
 			return jsonResult(raw), nil, nil
 		})
 
-	addMessageTools(s)
-
 	mcp.AddTool(s, &mcp.Tool{Name: "ide_note_events", Description: "Which action buttons the user clicked on your ide_point notes (oldest first), with the mark id and label. Pass since=the previous answer's next to get only new clicks.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true}},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in struct {
@@ -600,65 +596,6 @@ func addIDETools(s *mcp.Server, allowed []string) {
 				return nil, nil, err
 			}
 			return jsonResult(raw), nil, nil
-		})
-}
-
-// msgSince is the last inbox message this MCP session has read, so agents
-// never pass positions themselves.
-var msgSince atomic.Int64
-
-// readInbox attaches this session's app to the IDE (one agent at a time) and
-// returns the messages from the user and the IDE since the last read.
-func readInbox(ctx context.Context, method string, params map[string]any, timeout time.Duration) (*mcp.CallToolResult, any, error) {
-	name, _ := clientName.Load().(string)
-	if _, err := ideCall(ctx, "agent.attach", map[string]any{"client": name}, 10*time.Second); err != nil {
-		return nil, nil, err
-	}
-	params["since"] = msgSince.Load()
-	params["client"] = name
-	raw, err := ideCall(ctx, method, params, timeout)
-	if err != nil {
-		return nil, nil, err
-	}
-	var out struct {
-		Messages []json.RawMessage `json:"messages"`
-		Next     int64             `json:"next"`
-	}
-	if json.Unmarshal(raw, &out) == nil && out.Next > msgSince.Load() {
-		msgSince.Store(out.Next)
-	}
-	if len(out.Messages) == 0 {
-		if method == "msg.wait" {
-			return textResult("No message yet — call wait_for_message again."), nil, nil
-		}
-		return textResult("No new messages."), nil, nil
-	}
-	return jsonResult(raw), nil, nil
-}
-
-func textResult(text string) *mcp.CallToolResult {
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}
-}
-
-// addMessageTools registers the tools that read questions the user asks
-// about selected code in the IDE
-// (inbox in volt-ide/src/main/inbox.js).
-func addMessageTools(s *mcp.Server) {
-	mcp.AddTool(s, &mcp.Tool{Name: "inbox_read", Description: "New messages for you from the Volt IDE: questions the user typed about code they selected (with the selected lines). Marks them read. Answer in your own chat and make any change in the IDE as usual."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
-			return readInbox(ctx, "msg.read", map[string]any{}, 20*time.Second)
-		})
-
-	mcp.AddTool(s, &mcp.Tool{Name: "wait_for_message", Description: "Wait for the next question the user asks from the Volt IDE editor, up to timeout_s seconds (default 45, max 50). On timeout it says so — call it again to keep listening. Use it when you have no other work."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in struct {
-			TimeoutS int `json:"timeout_s,omitempty" jsonschema:"seconds to wait (default 45, max 50)"`
-		}) (*mcp.CallToolResult, any, error) {
-			t := in.TimeoutS
-			if t <= 0 {
-				t = 45
-			}
-			t = min(t, 50)
-			return readInbox(ctx, "msg.wait", map[string]any{"timeout_s": t}, time.Duration(t+15)*time.Second)
 		})
 }
 
