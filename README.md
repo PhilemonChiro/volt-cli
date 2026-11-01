@@ -1,7 +1,7 @@
 # volt-cli
 
-The `volt` command for [Volt](https://github.com/PhilemonChiro/volt), a typed language for microcontroller
-firmware. One program creates projects, checks and compiles them, installs the chip toolchains, builds
+The `volt` command of [Volt Embedded](https://voltembedded.com). Volt is a typed language for microcontroller
+firmware; this one program creates projects, checks and compiles them, installs the chip toolchains, builds
 firmware, flashes the board and shows its serial output. [Volt IDE](https://voltembedded.com) runs the same
 program underneath.
 
