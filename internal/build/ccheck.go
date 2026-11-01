@@ -47,7 +47,17 @@ func SyntaxCheck(code, framework, devices, voltFile string) (errs []CError, ran 
 	if err := os.WriteFile(mainC, []byte(code), 0o644); err != nil {
 		return nil, false, err
 	}
-	args := []string{"-fsyntax-only", "-std=gnu11", "-I", filepath.Join(framework, "include"),
+	// The chip SDK isn't on this computer, but the generated C includes a
+	// few of its headers (esp_attr.h for an `every … strict` ISR's
+	// IRAM_ATTR); stand-ins let the rest of the code be checked.
+	stubs := filepath.Join(tmp, "sdk-stubs")
+	if err := os.MkdirAll(stubs, 0o755); err != nil {
+		return nil, false, err
+	}
+	if err := os.WriteFile(filepath.Join(stubs, "esp_attr.h"), []byte("#pragma once\n#define IRAM_ATTR\n"), 0o644); err != nil {
+		return nil, false, err
+	}
+	args := []string{"-fsyntax-only", "-std=gnu11", "-I", filepath.Join(framework, "include"), "-I", stubs,
 		// The firmware build stops on these; the rest stay warnings there too.
 		"-Werror=unused-value", "-Werror=implicit-function-declaration",
 		"-Werror=int-conversion", "-Werror=incompatible-pointer-types"}
