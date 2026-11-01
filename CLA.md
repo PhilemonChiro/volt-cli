@@ -2,7 +2,7 @@
 
 Thank you for contributing to Volt. Volt is released under the GNU GPL and AGPL, and is also offered under a commercial
 licence. So that we can keep doing both, every contributor agrees to the terms below before a contribution is merged.
-You sign once, by following the link the CLA bot leaves on your first pull request; the agreement then covers all your
+You sign once, by replying to the CLA bot on your first pull request with the sentence it gives; the agreement then covers all your
 contributions to Volt.
 
 "We" and "us" means Philemon Chiro, the owner of Volt. "You" means the person or entity making a contribution.
