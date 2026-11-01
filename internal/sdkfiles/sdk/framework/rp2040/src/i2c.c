@@ -30,14 +30,14 @@ volt_error_t volt_i2c_write(uint8_t bus_id, uint8_t addr, const uint8_t *data, u
 {
     i2c_inst_t *i2c = get_i2c_hw(bus_id);
     int ret = i2c_write_blocking(i2c, addr, data, len, false);
-    return ret == len ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(ret == len ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_i2c_read(uint8_t bus_id, uint8_t addr, uint8_t *buf, uint8_t len)
 {
     i2c_inst_t *i2c = get_i2c_hw(bus_id);
     int ret = i2c_read_blocking(i2c, addr, buf, len, false);
-    return ret == len ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(ret == len ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_i2c_write_read(uint8_t bus_id, uint8_t addr,
@@ -47,9 +47,9 @@ volt_error_t volt_i2c_write_read(uint8_t bus_id, uint8_t addr,
     i2c_inst_t *i2c = get_i2c_hw(bus_id);
     // Write with nostop=true (repeated start)
     int ret = i2c_write_blocking(i2c, addr, write_data, write_len, true);
-    if (ret != write_len) return VOLT_ERR_INTERNAL;
+    if (ret != write_len) return volt_note_error(VOLT_ERR_INTERNAL);
     ret = i2c_read_blocking(i2c, addr, read_buf, read_len, false);
-    return ret == read_len ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(ret == read_len ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 uint8_t volt_i2c_read_reg(uint8_t bus_id, uint8_t addr, uint8_t reg)

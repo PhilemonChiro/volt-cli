@@ -44,21 +44,21 @@ volt_error_t volt_spi_write(uint8_t bus_id, const uint8_t *data, uint8_t len)
 {
     spi_inst_t *spi = get_spi_hw(bus_id);
     int ret = spi_write_blocking(spi, data, len);
-    return ret == len ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(ret == len ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_spi_read(uint8_t bus_id, uint8_t *buf, uint8_t len)
 {
     spi_inst_t *spi = get_spi_hw(bus_id);
     int ret = spi_read_blocking(spi, 0x00, buf, len);
-    return ret == len ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(ret == len ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_spi_transfer(uint8_t bus_id, const uint8_t *tx, uint8_t *rx, uint8_t len)
 {
     spi_inst_t *spi = get_spi_hw(bus_id);
     int ret = spi_write_read_blocking(spi, tx, rx, len);
-    return ret == len ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(ret == len ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_spi_write_then_read(uint8_t bus_id, uint8_t cs_pin,

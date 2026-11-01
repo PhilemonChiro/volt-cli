@@ -1,5 +1,17 @@
 #include "volt/error.h"
 
+// Tasks are protothreads on one core: one slot is per task in effect.
+static volt_error_t s_last_error = VOLT_OK;
+
+volt_error_t volt_last_error(void) { return s_last_error; }
+void volt_clear_error(void) { s_last_error = VOLT_OK; }
+
+volt_error_t volt_note_error(volt_error_t err)
+{
+    if (err != VOLT_OK) s_last_error = err;
+    return err;
+}
+
 const char *volt_error_name(volt_error_t error)
 {
     switch (error) {

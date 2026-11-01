@@ -48,6 +48,15 @@ typedef enum {
     VOLT_ERR_STORAGE_WRITE_FAILED = -63,
 } volt_error_t;
 
+// Last failure, for calls that return a value instead of volt_error_t (sensor
+// reads). Bus helpers (I2C, SPI) and drivers record failures with
+// volt_note_error; `let t = env.temperature() or skip` clears the slot, makes
+// the call and checks it. One slot per task.
+volt_error_t volt_last_error(void);
+void volt_clear_error(void);
+// Records err if it is a failure, and returns it: `return volt_note_error(e);`
+volt_error_t volt_note_error(volt_error_t err);
+
 // Returns the error name as a string, for logging.
 const char *volt_error_name(volt_error_t error);
 

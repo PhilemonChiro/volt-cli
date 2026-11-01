@@ -60,7 +60,7 @@ volt_error_t volt_i2c_init(uint8_t bus_id, uint8_t sda, uint8_t scl, uint32_t sp
 {
     if (bus_id >= VOLT_SOFT_I2C_BASE) {
         soft_i2c_t *b = soft_bus(bus_id);
-        if (!b) { log_error("i2c", "soft bus %d out of range", bus_id); return VOLT_ERR_INTERNAL; }
+        if (!b) { log_error("i2c", "soft bus %d out of range", bus_id); return volt_note_error(VOLT_ERR_INTERNAL); }
         b->sda = sda; b->scl = scl;
         gpio_reset_pin(sda); gpio_reset_pin(scl);
         gpio_set_pull_mode(sda, GPIO_PULLUP_ONLY);
@@ -83,13 +83,13 @@ volt_error_t volt_i2c_init(uint8_t bus_id, uint8_t sda, uint8_t scl, uint32_t sp
     esp_err_t err = i2c_param_config(bus_id, &conf);
     if (err != ESP_OK) {
         log_error("i2c", "config failed on bus %d (err=%d)", bus_id, err);
-        return VOLT_ERR_INTERNAL;
+        return volt_note_error(VOLT_ERR_INTERNAL);
     }
 
     err = i2c_driver_install(bus_id, I2C_MODE_MASTER, 0, 0, 0);
     if (err != ESP_OK) {
         log_error("i2c", "driver install failed on bus %d (err=%d)", bus_id, err);
-        return VOLT_ERR_INTERNAL;
+        return volt_note_error(VOLT_ERR_INTERNAL);
     }
 
     log_info("i2c", "bus %d initialized (SDA=%d SCL=%d speed=%lu)",
@@ -101,11 +101,11 @@ volt_error_t volt_i2c_write(uint8_t bus_id, uint8_t addr, const uint8_t *data, u
 {
     if (bus_id >= VOLT_SOFT_I2C_BASE) {
         soft_i2c_t *b = soft_bus(bus_id);
-        if (!b) return VOLT_ERR_INTERNAL;
+        if (!b) return volt_note_error(VOLT_ERR_INTERNAL);
         si_start(b);
-        if (!si_write(b, (uint8_t)(addr << 1))) { si_stop(b); return VOLT_ERR_INTERNAL; }
+        if (!si_write(b, (uint8_t)(addr << 1))) { si_stop(b); return volt_note_error(VOLT_ERR_INTERNAL); }
         for (uint8_t i = 0; i < len; i++) {
-            if (!si_write(b, data[i])) { si_stop(b); return VOLT_ERR_INTERNAL; }
+            if (!si_write(b, data[i])) { si_stop(b); return volt_note_error(VOLT_ERR_INTERNAL); }
         }
         si_stop(b);
         return VOLT_OK;
@@ -118,16 +118,16 @@ volt_error_t volt_i2c_write(uint8_t bus_id, uint8_t addr, const uint8_t *data, u
     i2c_master_stop(cmd);
     esp_err_t err = i2c_master_cmd_begin(bus_id, cmd, I2C_TIMEOUT_MS / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
-    return err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_i2c_read(uint8_t bus_id, uint8_t addr, uint8_t *buf, uint8_t len)
 {
     if (bus_id >= VOLT_SOFT_I2C_BASE) {
         soft_i2c_t *b = soft_bus(bus_id);
-        if (!b) return VOLT_ERR_INTERNAL;
+        if (!b) return volt_note_error(VOLT_ERR_INTERNAL);
         si_start(b);
-        if (!si_write(b, (uint8_t)((addr << 1) | 1))) { si_stop(b); return VOLT_ERR_INTERNAL; }
+        if (!si_write(b, (uint8_t)((addr << 1) | 1))) { si_stop(b); return volt_note_error(VOLT_ERR_INTERNAL); }
         for (uint8_t i = 0; i < len; i++) buf[i] = si_read(b, i < (len - 1));
         si_stop(b);
         return VOLT_OK;
@@ -143,7 +143,7 @@ volt_error_t volt_i2c_read(uint8_t bus_id, uint8_t addr, uint8_t *buf, uint8_t l
     i2c_master_stop(cmd);
     esp_err_t err = i2c_master_cmd_begin(bus_id, cmd, I2C_TIMEOUT_MS / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
-    return err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_i2c_write_read(uint8_t bus_id, uint8_t addr,
@@ -152,14 +152,14 @@ volt_error_t volt_i2c_write_read(uint8_t bus_id, uint8_t addr,
 {
     if (bus_id >= VOLT_SOFT_I2C_BASE) {
         soft_i2c_t *b = soft_bus(bus_id);
-        if (!b) return VOLT_ERR_INTERNAL;
+        if (!b) return volt_note_error(VOLT_ERR_INTERNAL);
         si_start(b);
-        if (!si_write(b, (uint8_t)(addr << 1))) { si_stop(b); return VOLT_ERR_INTERNAL; }
+        if (!si_write(b, (uint8_t)(addr << 1))) { si_stop(b); return volt_note_error(VOLT_ERR_INTERNAL); }
         for (uint8_t i = 0; i < write_len; i++) {
-            if (!si_write(b, write_data[i])) { si_stop(b); return VOLT_ERR_INTERNAL; }
+            if (!si_write(b, write_data[i])) { si_stop(b); return volt_note_error(VOLT_ERR_INTERNAL); }
         }
         si_start(b);   // repeated start
-        if (!si_write(b, (uint8_t)((addr << 1) | 1))) { si_stop(b); return VOLT_ERR_INTERNAL; }
+        if (!si_write(b, (uint8_t)((addr << 1) | 1))) { si_stop(b); return volt_note_error(VOLT_ERR_INTERNAL); }
         for (uint8_t i = 0; i < read_len; i++) read_buf[i] = si_read(b, i < (read_len - 1));
         si_stop(b);
         return VOLT_OK;
@@ -180,7 +180,7 @@ volt_error_t volt_i2c_write_read(uint8_t bus_id, uint8_t addr,
     i2c_master_stop(cmd);
     esp_err_t err = i2c_master_cmd_begin(bus_id, cmd, I2C_TIMEOUT_MS / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
-    return err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 uint8_t volt_i2c_read_reg(uint8_t bus_id, uint8_t addr, uint8_t reg)

@@ -13,7 +13,7 @@ static bool spi_bus_initialized[2] = { false, false };
 volt_error_t volt_spi_init(uint8_t bus_id, uint8_t mosi, uint8_t miso,
                            uint8_t clk, uint32_t speed)
 {
-    if (bus_id > 1) return VOLT_ERR_INVALID_ARG;
+    if (bus_id > 1) return volt_note_error(VOLT_ERR_INVALID_ARG);
 
     spi_host_device_t host = (bus_id == 0) ? SPI2_HOST : SPI3_HOST;
 
@@ -29,7 +29,7 @@ volt_error_t volt_spi_init(uint8_t bus_id, uint8_t mosi, uint8_t miso,
     esp_err_t err = spi_bus_initialize(host, &bus_cfg, SPI_DMA_CH_AUTO);
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         log_error("spi", "bus %d init failed (err=%d)", bus_id, err);
-        return VOLT_ERR_INTERNAL;
+        return volt_note_error(VOLT_ERR_INTERNAL);
     }
 
     // Add a default device (no CS — CS managed manually per-device)
@@ -43,7 +43,7 @@ volt_error_t volt_spi_init(uint8_t bus_id, uint8_t mosi, uint8_t miso,
     err = spi_bus_add_device(host, &dev_cfg, &spi_handles[bus_id]);
     if (err != ESP_OK) {
         log_error("spi", "add device failed on bus %d (err=%d)", bus_id, err);
-        return VOLT_ERR_INTERNAL;
+        return volt_note_error(VOLT_ERR_INTERNAL);
     }
 
     spi_bus_initialized[bus_id] = true;
@@ -65,7 +65,7 @@ void volt_spi_cs_deselect(uint8_t cs_pin)
 
 volt_error_t volt_spi_write(uint8_t bus_id, const uint8_t *data, uint8_t len)
 {
-    if (bus_id > 1 || !spi_handles[bus_id]) return VOLT_ERR_INTERNAL;
+    if (bus_id > 1 || !spi_handles[bus_id]) return volt_note_error(VOLT_ERR_INTERNAL);
 
     spi_transaction_t trans = {
         .length = len * 8,
@@ -74,12 +74,12 @@ volt_error_t volt_spi_write(uint8_t bus_id, const uint8_t *data, uint8_t len)
     };
 
     esp_err_t err = spi_device_transmit(spi_handles[bus_id], &trans);
-    return err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_spi_read(uint8_t bus_id, uint8_t *buf, uint8_t len)
 {
-    if (bus_id > 1 || !spi_handles[bus_id]) return VOLT_ERR_INTERNAL;
+    if (bus_id > 1 || !spi_handles[bus_id]) return volt_note_error(VOLT_ERR_INTERNAL);
 
     spi_transaction_t trans = {
         .length = len * 8,
@@ -89,12 +89,12 @@ volt_error_t volt_spi_read(uint8_t bus_id, uint8_t *buf, uint8_t len)
     };
 
     esp_err_t err = spi_device_transmit(spi_handles[bus_id], &trans);
-    return err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_spi_transfer(uint8_t bus_id, const uint8_t *tx, uint8_t *rx, uint8_t len)
 {
-    if (bus_id > 1 || !spi_handles[bus_id]) return VOLT_ERR_INTERNAL;
+    if (bus_id > 1 || !spi_handles[bus_id]) return volt_note_error(VOLT_ERR_INTERNAL);
 
     spi_transaction_t trans = {
         .length = len * 8,
@@ -103,7 +103,7 @@ volt_error_t volt_spi_transfer(uint8_t bus_id, const uint8_t *tx, uint8_t *rx, u
     };
 
     esp_err_t err = spi_device_transmit(spi_handles[bus_id], &trans);
-    return err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL;
+    return volt_note_error(err == ESP_OK ? VOLT_OK : VOLT_ERR_INTERNAL);
 }
 
 volt_error_t volt_spi_write_then_read(uint8_t bus_id, uint8_t cs_pin,
