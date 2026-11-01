@@ -171,7 +171,7 @@ type ideNewProjectIn struct {
 	Name     string `json:"name" jsonschema:"folder name: letters, numbers, spaces, - and _"`
 	Chip     string `json:"chip" jsonschema:"target chip, e.g. esp32 (default) or rp2040"`
 	Source   string `json:"source,omitempty" jsonschema:"the program for main.volt (recommended; run check on it first)"`
-	Template string `json:"template,omitempty" jsonschema:"without source: blink (default), empty, iot-sensor or door-lock"`
+	Template string `json:"template,omitempty" jsonschema:"without source: blink (default), empty, events, timers, state-machine or network"`
 }
 
 type ideHighlightIn struct {
@@ -188,6 +188,7 @@ type ideAnchor struct {
 	EndCol     int    `json:"end_col,omitempty" jsonschema:"end column, exclusive (default: line end)"`
 	Find       string `json:"find,omitempty" jsonschema:"exact code to point at instead of line/col, e.g. a name or statement; searched from line if given"`
 	Occurrence int    `json:"occurrence,omitempty" jsonschema:"with find: which match, 1-based (default 1)"`
+	EndFind    string `json:"end_find,omitempty" jsonschema:"with find: stretch the mark to the end of the first match of this code after find, to cover several lines (e.g. an if and its branches)"`
 	Target     string `json:"target,omitempty" jsonschema:"a part of the IDE instead of code: check, run, monitor, save, export, format, settings, ai, new, open, editor, diagrams, board, output, side, toolbar, hardware, outline or library"`
 }
 
