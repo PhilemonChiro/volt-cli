@@ -109,6 +109,46 @@ type Library struct {
 	Name string // device prefix, or Framework
 	FS   fs.FS
 	Root string
+	// Key is where its approvals are recorded; "" means Name. A project's own
+	// libraries are keyed by the project's folder, so two projects can each
+	// have a library of the same name without sharing approvals.
+	Key string
+}
+
+func (l Library) key() string {
+	if l.Key != "" {
+		return l.Key
+	}
+	return l.Name
+}
+
+// ProjectLibraries lists the project's own device libraries
+// (<project>/devices/<prefix>/ holding a device.json). None is not an error.
+func ProjectLibraries(project string) ([]Library, error) {
+	abs, err := filepath.Abs(project)
+	if err != nil {
+		return nil, err
+	}
+	devices := filepath.Join(abs, "devices")
+	ents, err := os.ReadDir(devices)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var libs []Library
+	for _, e := range ents {
+		if !e.IsDir() {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(devices, e.Name(), "device.json")); err != nil {
+			continue
+		}
+		libs = append(libs, Library{Name: e.Name(), FS: os.DirFS(filepath.Join(devices, e.Name())), Root: ".",
+			Key: "project:" + filepath.ToSlash(abs) + "/" + e.Name()})
+	}
+	return libs, nil
 }
 
 // Libraries lists the framework and every device folder (one holding a
@@ -190,14 +230,16 @@ func Check(st *Store, pub ed25519.PublicKey, libs []Library, bundled map[string]
 			continue
 		}
 		s.Hash = h
-		s.MatchesBundled = bundled != nil && bundled[l.Name] == h
-		s.Bundled = bundled != nil && bundled[l.Name] != ""
-		es := st.Entries[l.Name]
+		if l.Key == "" { // a project's own library is never a shipped one
+			s.MatchesBundled = bundled != nil && bundled[l.Name] == h
+			s.Bundled = bundled != nil && bundled[l.Name] != ""
+		}
+		es := st.Entries[l.key()]
 		var match, invalid *Entry
 		for k := range es {
 			e := &es[k]
 			switch {
-			case !verifyEntry(pub, st.Key, l.Name, *e):
+			case !verifyEntry(pub, st.Key, l.key(), *e):
 				invalid = e
 			case e.Hash == h:
 				match = e
@@ -299,9 +341,9 @@ func Approve(dir string, privPEM []byte, libs []Library, source, version string)
 			return fmt.Errorf("%s: %w", l.Name, err)
 		}
 		e := Entry{Hash: h, Version: version, Source: source, ApprovedAt: now}
-		e.Sig = "ed25519:" + base64.StdEncoding.EncodeToString(ed25519.Sign(priv, message(st.Key, l.Name, e)))
+		e.Sig = "ed25519:" + base64.StdEncoding.EncodeToString(ed25519.Sign(priv, message(st.Key, l.key(), e)))
 		kept := []Entry{}
-		for _, old := range st.Entries[l.Name] {
+		for _, old := range st.Entries[l.key()] {
 			if old.Hash != h {
 				kept = append(kept, old)
 			}
@@ -310,7 +352,7 @@ func Approve(dir string, privPEM []byte, libs []Library, source, version string)
 		if len(kept) > keepPerLibrary {
 			kept = kept[len(kept)-keepPerLibrary:]
 		}
-		st.Entries[l.Name] = kept
+		st.Entries[l.key()] = kept
 	}
 	return save(dir, st)
 }

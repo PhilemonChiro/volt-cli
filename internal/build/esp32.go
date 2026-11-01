@@ -27,7 +27,7 @@ type Project struct {
 	Chip      string
 	Code      string // compiled C
 	Framework string // SDK framework dir (holds esp32/, include/)
-	Devices   string // device library (holds <prefix>/driver.c)
+	Devices   string // device libraries (hold <prefix>/driver.c): the shared one, then the project's (see DeviceDirs)
 	Env       []string
 	Optimize  string // "debug", "size", "speed", or "" for the pack's default
 }
@@ -190,17 +190,38 @@ func dropIDFBuild(out string) error {
 // <prefix>_t for each device. Unused drivers are not compiled, so one broken
 // installed driver cannot break every build.
 func usedDrivers(devices, code string) ([]string, error) {
-	all, err := filepath.Glob(filepath.Join(devices, "*", "driver.c"))
-	if err != nil {
-		return nil, err
-	}
 	var used []string
-	for _, d := range all {
-		if strings.Contains(code, filepath.Base(filepath.Dir(d))+"_") {
-			used = append(used, d)
+	seen := map[string]bool{}
+	for _, dir := range filepath.SplitList(devices) {
+		all, err := filepath.Glob(filepath.Join(dir, "*", "driver.c"))
+		if err != nil {
+			return nil, err
+		}
+		for _, d := range all {
+			prefix := filepath.Base(filepath.Dir(d))
+			// The shared library comes first: a project library can't replace it.
+			if seen[prefix] {
+				continue
+			}
+			seen[prefix] = true
+			if strings.Contains(code, prefix+"_") {
+				used = append(used, d)
+			}
 		}
 	}
 	return used, nil
+}
+
+// DeviceDirs joins the shared device library and a project's own devices
+// folder (when it exists) into one Project.Devices value.
+func DeviceDirs(shared, project string) string {
+	if project == "" {
+		return shared
+	}
+	if st, err := os.Stat(project); err != nil || !st.IsDir() {
+		return shared
+	}
+	return shared + string(os.PathListSeparator) + project
 }
 
 // libraryHeaders gathers the header.h of each device library the program

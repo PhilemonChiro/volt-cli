@@ -13,7 +13,9 @@ import (
 	"strings"
 
 	"github.com/PhilemonChiro/volt-cli/internal/build"
+	"github.com/PhilemonChiro/volt-compiler"
 	"github.com/PhilemonChiro/volt-compiler/harness"
+	"github.com/PhilemonChiro/volt-compiler/ide"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -173,7 +175,22 @@ func newMCPServer(allowed []string, devDir string) *mcp.Server {
 				return nil, nil, err
 			}
 			defer cleanup()
+			useProject(file)
 			res, err := harness.Check(src, file)
+			if err == nil && res.OK {
+				// Volt accepts it; make sure the C it becomes compiles too.
+				if code, _, cerr := compiler.Compile(src, file); cerr == nil {
+					for _, e := range cBuildCheck(code, devDir, file) {
+						res.Diagnostics = append(res.Diagnostics, ide.Diagnostic{Line: e.Line, Col: e.Col, EndLine: e.Line, EndCol: e.Col + 1,
+							Severity: "error", Message: e.Message, Hint: cCheckHint, Code: "c-check"})
+						res.Errors++
+						res.OK = false
+					}
+					if !res.OK {
+						res.Next = "The C build check failed (see the error): rewrite that line another way, then call check again."
+					}
+				}
+			}
 			return nil, res, err
 		})
 
@@ -186,6 +203,7 @@ func newMCPServer(allowed []string, devDir string) *mcp.Server {
 				return nil, nil, err
 			}
 			defer cleanup()
+			useProject(file)
 			res, err := harness.Review(src, file)
 			return nil, res, err
 		})

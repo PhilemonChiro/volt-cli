@@ -83,7 +83,7 @@ func buildProject(pr project, devicesFlag string, env []string, asJSON bool, r *
 		return "", fmt.Errorf("no framework next to the device library (%s)", toolchain.Tilde(framework))
 	}
 
-	if err := checkApprovals(devs, framework, r); err != nil {
+	if err := checkApprovals(devs, framework, pr.dir, r); err != nil {
 		return "", err
 	}
 	r.Step("compile", "Compiling "+filepath.Base(pr.src)+"...", 5)
@@ -112,7 +112,7 @@ func buildProject(pr project, devicesFlag string, env []string, asJSON bool, r *
 
 	return build.ESP32(build.Project{
 		Dir: pr.dir, Name: pr.name, Chip: pr.chip, Code: code,
-		Framework: framework, Devices: devs, Env: env, Optimize: pr.optimize,
+		Framework: framework, Devices: build.DeviceDirs(devs, filepath.Join(pr.dir, "devices")), Env: env, Optimize: pr.optimize,
 	}, r)
 }
 

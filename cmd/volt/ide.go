@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/PhilemonChiro/volt-cli/internal/libtrust"
+	"github.com/PhilemonChiro/volt-cli/internal/sdkfiles"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -27,13 +29,15 @@ import (
 
 const ideInstructions = `
 
-If the Volt IDE is running (ide_status answers), work in it so the user can watch, and only on the project it has open — the file tools (check with a path, review, build) refuse other projects while the IDE runs. Change the open program only with ide_edit (the user sees it and can undo it), never by writing the project's files with your own file tools. Know which project you are in: start with ide_status. If the user's request is about a different project, find it with ide_projects and switch with ide_open (if the open file has unsaved changes, ide_save or ask the user first). If no project fits, create one with ide_new_project (a short name, the chip, and your program as source) — it opens in the IDE. Then: ide_read the open program, change it with ide_edit (check and review as usual), look at the result with ide_show + ide_screenshot (state machine and sequence diagrams; the board view), build with ide_build, and after ide_run flashes the board confirm the behaviour with ide_serial. To show the user things, use ide_point (notes on code or IDE parts) and ide_walkthrough (step-by-step tour).
+If the Volt IDE is running (ide_status answers), work in it so the user can watch, and only on the project it has open — the file tools (check with a path, review, build) refuse other projects while the IDE runs. Change the open program only with ide_edit (the user sees it and can undo it), never by writing the project's files with your own file tools. Know which project you are in: start with ide_status. If the user's request is about a different project, find it with ide_projects and switch with ide_open (if the open file has unsaved changes, ide_save or ask the user first). If no project fits, create one with ide_new_project (a short name, the chip, and your program as source) — it opens in the IDE. Then: ide_read the open program, change it with ide_edit (check and review as usual), show the user a view with ide_show (state machine and sequence diagrams; the Wiring view of pins and connections) and take an ide_screenshot only when you must see it yourself (checking a diagram you changed, or the user asks what it looks like), build with ide_build, and after ide_run flashes the board confirm the behaviour with ide_serial. To show the user things, use ide_point (notes on code or IDE parts) and ide_walkthrough (step-by-step tour).
 
 Act, don't interview: when the user describes what they want (e.g. "detect gas leaks in the kitchen and alert"), design and propose a complete program with sensible defaults — free pins that don't clash with the hardware block, the usual part for the job, standard thresholds and alerts (buzzer, LED, LCD message) — and state the assumptions in one line so they can correct you. Ask only when an answer really changes the program and can't be defaulted, one question at a time. When a part has no Volt driver, follow device_card's next: use a pin type for simple analog/digital parts, or write the driver with library_write.
 
 Asking in the IDE: when you need a decision about the code while the user is working in Volt IDE (a choice between approaches, a value only they know, whether to apply a change), you may ask with ide_ask, anchored to the code it is about, with a few clear choices and/or a text answer; it waits for their reply. This is optional — use your judgement: ask in the IDE when pointing at the code helps, ask in chat otherwise, and don't ask when the request already answers it.
 
 Writing a device library: it is one folder, <device library>/<prefix>/, holding device.json (name, interface, methods with params and returns — see an existing device with device_card), driver.c (the C implementation, functions named <prefix>_<method>) and header.h (the <prefix>_t struct typedef and a prototype for every <prefix>_* function; include only standard and volt/ headers). The build includes header.h automatically. Never edit Volt's framework files (framework/include/volt/*.h and the runtime) — a library never needs to. ide_status shows the device library folders the IDE and volt build use.
+
+Who may change a library: Volt's official libraries and ones installed from the Grid are never changed — not their methods, not their code. A shared library holds only what any project using that part needs. Methods one project needs (its SMS commands, a whitelist, a custom report format) go in a project library: library_write with scope "project" and a new prefix (e.g. sim7000lite_app), in the open project's devices/ folder; it builds on the shared driver and can't replace it. Plain logic can also just be functions in the program. If a shared driver has a real bug or lacks something every user needs, tell the user instead of changing it.
 
 Device libraries need the user's approval. Any new or changed device library (a folder under the device library with device.json/driver.c, or the framework) is blocked from builds until the user approves it in Volt IDE; the IDE opens a review sheet the moment it changes. Create or change libraries with library_write (it writes the files to the right place and asks for approval) rather than with your own file tools; after any other change call library_request_approval with its prefix and wait: it returns approved, rejected (with the user's note — fix what they said and ask again), later or timeout. Never try to work around a blocked build.`
 
@@ -69,6 +73,10 @@ func ideCall(ctx context.Context, method string, params any, timeout time.Durati
 	}
 	// The Claude Code session this server runs in, so the IDE can send a
 	// question from the editor to the session that is working in it.
+	// Set by the IDE for its own chat agents, which already asked the user.
+	if host := os.Getenv("VOLT_AGENT_HOST"); host != "" {
+		req.Header.Set("X-Volt-Host", host)
+	}
 	if sid := os.Getenv("CLAUDE_CODE_SESSION_ID"); sid != "" {
 		req.Header.Set("X-Volt-Session", sid)
 	}
@@ -472,9 +480,33 @@ func addIDETools(s *mcp.Server, allowed []string) {
 			if strings.TrimSpace(in.DriverC) == "" || strings.TrimSpace(in.HeaderH) == "" {
 				return nil, nil, errors.New("driver_c and header_h are both required")
 			}
-			root := syncDevices(useDevices(""))
-			if root == "" {
+			// The user's agent permissions (Settings, volt.toml [agent]) decide
+			// before anything is written. Without the IDE nothing can be
+			// approved, so builds refuse the library anyway.
+			if _, err := ideCall(ctx, "agent_gate", map[string]any{"tool": "library_write", "scope": in.Scope}, 16*time.Minute); err != nil && !errors.Is(err, errNoIDE) {
+				return nil, nil, err
+			}
+			shared := syncDevices(useDevices(""))
+			if shared == "" {
 				return nil, nil, errors.New("no device library folder found")
+			}
+			name, _ := dj["name"].(string)
+			root := shared
+			switch in.Scope {
+			case "", "shared":
+				if why := lockedLibrary(shared, in.Prefix); why != "" {
+					return nil, nil, fmt.Errorf("%s is %s and can't be changed here. Put the methods this project needs in a project library instead: library_write with scope \"project\" and a new prefix (e.g. %s_%s)", in.Prefix, why, in.Prefix, "app")
+				}
+			case "project":
+				root = compiler.ProjectDevicesDir
+				if root == "" {
+					return nil, nil, errors.New("no project is open in Volt IDE: open the project first (ide_open), then write its library")
+				}
+				if isDir(filepath.Join(shared, in.Prefix)) || (name != "" && compiler.Registry().Get(name) != nil && !compiler.Registry().Get(name).Project) {
+					return nil, nil, fmt.Errorf("a shared library already uses the prefix or name of %q; a project library needs its own (e.g. %s_app)", in.Prefix, in.Prefix)
+				}
+			default:
+				return nil, nil, errors.New(`scope must be "shared" or "project"`)
 			}
 			dir := filepath.Join(root, in.Prefix)
 			if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -486,7 +518,7 @@ func addIDETools(s *mcp.Server, allowed []string) {
 					return nil, nil, err
 				}
 			}
-			out := map[string]any{"written": dir}
+			out := map[string]any{"written": dir, "scope": map[bool]string{true: "project", false: "shared"}[root != shared]}
 			if in.Wait != nil && !*in.Wait {
 				out["next"] = "Call library_request_approval when you want the user to review it; builds refuse it until approved."
 				b, _ := json.Marshal(out)
@@ -543,7 +575,7 @@ func addIDETools(s *mcp.Server, allowed []string) {
 			return jsonResult(raw), nil, nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{Name: "ide_show", Description: "Switch the IDE's main view: code, diagrams (state machine or sequence diagram, generated from the program) or board (pinout and wiring). Take an ide_screenshot afterwards to see it.",
+	mcp.AddTool(s, &mcp.Tool{Name: "ide_show", Description: "Switch the IDE's main view for the user: code, diagrams (state machine or sequence diagram, generated from the program) or board (the Wiring view: every pin and connection, buses included). Use board when the user asks about wiring, connections or pins. Take an ide_screenshot only when you must see the view yourself.",
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true}},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in ideShowIn) (*mcp.CallToolResult, any, error) {
 			raw, err := ideCall(ctx, "show", in, 20*time.Second)
@@ -644,10 +676,15 @@ func syncDevices(fallback string) string {
 	defer cancel()
 	if raw, err := ideCall(ctx, "library_paths", map[string]any{}, 3*time.Second); err == nil {
 		var lp struct {
-			IDE string `json:"ide_builds_use"`
+			IDE     string  `json:"ide_builds_use"`
+			Project *string `json:"project_devices"`
 		}
 		if json.Unmarshal(raw, &lp) == nil && lp.IDE != "" && isDir(lp.IDE) {
 			dir = lp.IDE
+		}
+		// The open project's own libraries, for programs passed as text.
+		if lp.Project != nil {
+			compiler.ProjectDevicesDir = *lp.Project
 		}
 	}
 	if dir != "" {
@@ -664,4 +701,36 @@ type libraryWriteIn struct {
 	DriverC    string `json:"driver_c" jsonschema:"driver.c: the C implementation, functions named <prefix>_<method>, plus <prefix>_init"`
 	HeaderH    string `json:"header_h" jsonschema:"header.h: the <prefix>_t struct typedef and a prototype for every <prefix>_* function; standard and volt/ headers only"`
 	Wait       *bool  `json:"wait,omitempty" jsonschema:"wait for the user's approval in Volt IDE (default true)"`
+	Scope      string `json:"scope,omitempty" jsonschema:"where it goes: shared (default) — a general driver for a part, available to every project; project — methods only the open project needs, in its devices/ folder (a new prefix; it can't replace a shared library)"`
+}
+
+// lockedLibrary says why a shared library can't be changed on this computer
+// ("" when it can): Volt's own libraries and ones installed from the Grid
+// stay as their authors made them.
+func lockedLibrary(root, prefix string) string {
+	dir := filepath.Join(root, prefix)
+	if !isDir(dir) {
+		return ""
+	}
+	official := "an official Volt library"
+	if libtrust.BundledDigests(sdkfiles.FS())[prefix] != "" {
+		return official
+	}
+	tdir, err := libtrust.Dir()
+	if err != nil {
+		return ""
+	}
+	st, pub, ok, err := libtrust.Load(tdir)
+	if err != nil || !ok {
+		return ""
+	}
+	for _, s := range libtrust.Check(st, pub, []libtrust.Library{{Name: prefix, FS: os.DirFS(dir), Root: "."}}, nil) {
+		switch {
+		case s.Source == "sdk-baseline":
+			return official
+		case strings.HasPrefix(s.Source, "registry:"):
+			return "installed from the Grid"
+		}
+	}
+	return ""
 }

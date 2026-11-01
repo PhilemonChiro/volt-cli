@@ -144,6 +144,19 @@ func useDevices(dir string) string {
 	return compiler.DevicesDir
 }
 
+// useProject points the compiler at the project's own device libraries
+// (<project>/devices) when path is a file in a project (beside volt.toml).
+// Otherwise it leaves the current setting (e.g. the IDE's open project).
+func useProject(path string) {
+	dir, err := filepath.Abs(filepath.Dir(path))
+	if err != nil {
+		return
+	}
+	if _, err := os.Stat(filepath.Join(dir, "volt.toml")); err == nil {
+		compiler.ProjectDevicesDir = filepath.Join(dir, "devices")
+	}
+}
+
 func isDir(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && st.IsDir()
@@ -180,6 +193,7 @@ func compileFile(path string) (code string, errs *compiler.Errors, err error) {
 	if err != nil {
 		return "", nil, err
 	}
+	useProject(path)
 	code, errs, err = compiler.Compile(string(src), path)
 	if errs == nil {
 		errs = &compiler.Errors{}

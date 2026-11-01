@@ -30,7 +30,7 @@ func libraryDirs(devicesFlag string) (devs, framework string, err error) {
 // checkApprovals refuses a build whose device libraries or framework differ
 // from what the user approved. With approvals never set up (a CLI-only
 // install), it warns and lets the build go on.
-func checkApprovals(devs, framework string, r *build.Reporter) error {
+func checkApprovals(devs, framework, project string, r *build.Reporter) error {
 	dir, err := libtrust.Dir()
 	if err != nil {
 		return err
@@ -46,6 +46,13 @@ func checkApprovals(devs, framework string, r *build.Reporter) error {
 	libs, err := libtrust.Libraries(devs, framework)
 	if err != nil {
 		return err
+	}
+	if project != "" {
+		own, err := libtrust.ProjectLibraries(project)
+		if err != nil {
+			return err
+		}
+		libs = append(libs, own...)
 	}
 	var bad []string
 	for _, s := range libtrust.Check(st, pub, libs, nil) {
@@ -89,13 +96,14 @@ func runTrust(args []string) int {
 	all := fl.Bool("all", false, "approve: every library present")
 	source := fl.String("source", "local", "approve: sdk-baseline, local, ai or registry:<keyId>")
 	ver := fl.String("version", "", "approve: library version to record")
+	project := fl.String("project", "", "status/approve: the project `dir` whose own devices/ libraries to use")
 	pos, ok := parse(fl, args)
 	if !ok {
 		return 2
 	}
 	dir, err := libtrust.Dir()
 	if err == nil {
-		err = trustCmd(sub, dir, pos, *devices, *asJSON, *force, *all, *source, *ver)
+		err = trustCmd(sub, dir, pos, *devices, *project, *asJSON, *force, *all, *source, *ver)
 	}
 	if err != nil {
 		if *asJSON {
@@ -108,7 +116,7 @@ func runTrust(args []string) int {
 	return 0
 }
 
-func trustCmd(sub, dir string, names []string, devicesFlag string, asJSON, force, all bool, source, ver string) error {
+func trustCmd(sub, dir string, names []string, devicesFlag, project string, asJSON, force, all bool, source, ver string) error {
 	switch sub {
 	case "init":
 		priv, err := libtrust.Init(dir, force)
@@ -133,11 +141,16 @@ func trustCmd(sub, dir string, names []string, devicesFlag string, asJSON, force
 		return fmt.Errorf("unknown subcommand %q", sub)
 	}
 
-	devs, framework, err := libraryDirs(devicesFlag)
-	if err != nil {
-		return err
+	var devs, framework string
+	var libs []libtrust.Library
+	var err error
+	if project != "" {
+		// Only the project's own libraries (keyed by the project's folder).
+		devs = filepath.Join(project, "devices")
+		libs, err = libtrust.ProjectLibraries(project)
+	} else if devs, framework, err = libraryDirs(devicesFlag); err == nil {
+		libs, err = libtrust.Libraries(devs, framework)
 	}
-	libs, err := libtrust.Libraries(devs, framework)
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhilemonChiro/volt-cli/internal/build"
 	"github.com/PhilemonChiro/volt-compiler"
 	"github.com/PhilemonChiro/volt-compiler/worker"
 )
@@ -20,7 +21,7 @@ func runCheck(args []string) int {
 	if !ok || len(pos) > 1 {
 		return 2
 	}
-	useDevices(*devices)
+	devs := useDevices(*devices)
 	path, err := findSource(first(pos))
 	if err != nil {
 		stderr.Printf("[red]volt check: %s[/red]\n", err)
@@ -28,12 +29,17 @@ func runCheck(args []string) int {
 	}
 
 	t0 := time.Now()
-	_, errs, err := compileFile(path)
-	elapsed := time.Since(t0)
+	code, errs, err := compileFile(path)
 	if err != nil {
 		stderr.Printf("[red]volt check: %s[/red]\n", err)
 		return 1
 	}
+	if n, _ := counts(errs); n == 0 {
+		for _, e := range cBuildCheck(code, devs, path) {
+			errs.Error(compiler.Region{StartLine: e.Line, StartCol: e.Col, EndLine: e.Line, EndCol: e.Col + 1}, "BUILD CHECK", e.Message, cCheckHint)
+		}
+	}
+	elapsed := time.Since(t0)
 	nerr, nwarn := counts(errs)
 
 	if *asJSON {
@@ -97,6 +103,34 @@ func runCheck(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// cCheckHint explains a BUILD CHECK error: Volt accepted the line but the C
+// it becomes doesn't compile.
+const cCheckHint = "Volt accepted this line, but the C it turns into doesn't compile, so the firmware build would fail. " +
+	"This is a Volt bug: write the line another way (for example, put the value in a variable first) and report it."
+
+// cBuildCheck compiles the program's C on this computer, syntax only (see
+// build.SyntaxCheck), and returns its errors as Volt-line messages.
+func cBuildCheck(code, devs, voltFile string) []build.CError {
+	if devs == "" {
+		return nil
+	}
+	framework := filepath.Join(filepath.Dir(devs), "framework")
+	if !isDir(framework) {
+		return nil
+	}
+	errs, ran, err := build.SyntaxCheck(code, framework, build.DeviceDirs(devs, compiler.ProjectDevicesDir), voltFile)
+	if !ran || err != nil {
+		return nil
+	}
+	for i := range errs {
+		if errs[i].Line == 0 {
+			errs[i].Line, errs[i].Col = 1, 1
+		}
+		errs[i].Message = "The firmware build would fail here: " + errs[i].Message
+	}
+	return errs
 }
 
 func runCompile(args []string) int {
